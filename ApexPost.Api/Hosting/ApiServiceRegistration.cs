@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ApexPost.Api.Errors;
+using ApexPost.Api.Security;
 using ApexPost.Infrastructure.Persistence;
 using ApexPost.Tracking.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +37,7 @@ internal static class ApiServiceRegistration
         services.Configure<RouteOptions>(options =>
             options.ConstraintMap.Add(TrackingNumberRouteConstraint.Name, typeof(TrackingNumberRouteConstraint)));
 
+        services.AddApexPostSecurity();
         services.AddApexPostVersioning();
         services.AddApexPostOpenApi();
         services.AddProblemDetails();

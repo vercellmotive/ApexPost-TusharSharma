@@ -147,9 +147,24 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
     public async Task<ServiceResult<ScanUploadOutcome>> UploadScansAsync(
         string trackingNumber,
         IReadOnlyList<IncomingScan> scans,
+        string uploadingCourierId,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(scans);
+
+        // A courier uploads only the scans they made. One scan under another courier id refuses the whole batch,
+        // because it means the device or the token is wrong, not that one scan is bad.
+        var foreign = scans.FirstOrDefault(scan => !string.Equals(scan.CourierId, uploadingCourierId, StringComparison.Ordinal));
+        if (string.IsNullOrWhiteSpace(uploadingCourierId) || foreign is not null)
+        {
+            return new ServiceError(
+                ServiceErrorKind.Forbidden,
+                "Not your scans",
+                foreign is null
+                    ? "The access token has no courierId claim, so it cannot upload scans."
+                    : $"Scan {foreign.ScanId} was recorded by courier {foreign.CourierId}. You can upload only scans recorded under your own courier id.");
+        }
+
         var shipment = await store.FindAsync(trackingNumber, ct);
         if (shipment is null)
         {

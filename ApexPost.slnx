@@ -4,6 +4,8 @@
   <Project Path="ApexPost.Application/ApexPost.Application.csproj" Id="4a52217c-2061-4383-9dc9-0f251654b342" />
   <Project Path="ApexPost.Client.Consumer/ApexPost.Client.Consumer.csproj" />
   <Project Path="ApexPost.Client/ApexPost.Client.csproj" />
+  <Project Path="ApexPost.Courier.Core.Tests/ApexPost.Courier.Core.Tests.csproj" />
+  <Project Path="ApexPost.Courier.Core/ApexPost.Courier.Core.csproj" />
   <Project Path="ApexPost.Courier.Offline.Harness/ApexPost.Courier.Offline.Harness.csproj" Id="5b1c3f0e-6d2a-4c58-9a47-1e0f6a8b7c21" />
   <Project Path="ApexPost.Courier.Offline.Tests/ApexPost.Courier.Offline.Tests.csproj" Id="9e4a7d13-5c82-4f6b-b0a1-3d7e2c8f5a64" />
   <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" Id="c7d4e8a2-3f19-4b60-8e75-2a9b5d1c4f38" />

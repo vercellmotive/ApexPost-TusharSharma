@@ -16,6 +16,9 @@ internal static class ScanFields
     public const string SyncStatus = "syncStatus";
 
     public static readonly string[] All = [TrackingNumber, ScanType, CourierId, Location, ScannedAtUtc, Notes, SyncStatus];
+
+    /// <summary>Optional, added in Part D: present only on a scan that has a signature.</summary>
+    public const string RecipientSignatureName = "recipientSignatureName";
 }
 
 /// <summary>
@@ -41,6 +44,14 @@ internal static class ScanDocumentMapper
         document.SetDate(ScanFields.ScannedAtUtc, scan.ScannedAtUtc.ToUniversalTime());
         document.SetString(ScanFields.Notes, scan.Notes);
         document.SetString(ScanFields.SyncStatus, scan.SyncStatus.ToString());
+        if (scan.RecipientSignatureName is { } signature)
+        {
+            document.SetString(ScanFields.RecipientSignatureName, signature);
+        }
+        else
+        {
+            document.Remove(ScanFields.RecipientSignatureName);
+        }
     }
 
     /// <summary>Maps a document that was read by key.</summary>
@@ -59,6 +70,7 @@ internal static class ScanDocumentMapper
         Location = Text(data, id, ScanFields.Location),
         ScannedAtUtc = Time(data, id),
         Notes = data.GetString(ScanFields.Notes),
+        RecipientSignatureName = data.GetString(ScanFields.RecipientSignatureName),
         SyncStatus = Name<SyncStatus>(Text(data, id, ScanFields.SyncStatus), id, ScanFields.SyncStatus)
     };
 

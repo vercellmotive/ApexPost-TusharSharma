@@ -13,6 +13,7 @@ public sealed record ShipmentScan
     public const int MaxCourierIdLength = 32;
     public const int MaxLocationLength = 200;
     public const int MaxNotesLength = 500;
+    public const int MaxSignatureLength = 100;
 
     public required string Id { get; init; }
     public required string TrackingNumber { get; init; }
@@ -24,6 +25,13 @@ public sealed record ShipmentScan
     public required DateTimeOffset ScannedAtUtc { get; init; }
 
     public string? Notes { get; init; }
+
+    /// <summary>
+    /// Who signed for a delivered parcel. Added in Part D, because the API needs it for a Delivered scan. It is
+    /// optional, and a scan without one keeps exactly the seven Part A fields.
+    /// </summary>
+    public string? RecipientSignatureName { get; init; }
+
     public SyncStatus SyncStatus { get; init; } = SyncStatus.Pending;
 
     public static string NewId() => IdPrefix + Guid.NewGuid().ToString("D");
@@ -42,7 +50,8 @@ public sealed record ShipmentScan
         string courierId,
         string location,
         DateTimeOffset scannedAt,
-        string? notes = null)
+        string? notes = null,
+        string? recipientSignatureName = null)
     {
         var scan = new ShipmentScan
         {
@@ -53,6 +62,7 @@ public sealed record ShipmentScan
             Location = location?.Trim() ?? string.Empty,
             ScannedAtUtc = scannedAt.ToUniversalTime(),
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            RecipientSignatureName = string.IsNullOrWhiteSpace(recipientSignatureName) ? null : recipientSignatureName.Trim(),
             SyncStatus = SyncStatus.Pending
         };
         scan.Validate();
@@ -73,6 +83,11 @@ public sealed record ShipmentScan
         if (Notes is not null)
         {
             RequireText(Notes, nameof(Notes), MaxNotesLength, required: false);
+        }
+
+        if (RecipientSignatureName is not null)
+        {
+            RequireText(RecipientSignatureName, nameof(RecipientSignatureName), MaxSignatureLength, required: true);
         }
 
         if (!Enum.IsDefined(ScanType))

@@ -11,8 +11,11 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings {
 var baseUrl = builder.Configuration["ApexPostApi:BaseUrl"]
     ?? throw new InvalidOperationException("Set ApexPostApi:BaseUrl in appsettings.json or on the command line.");
 
-// The generated client takes its HttpClient from IHttpClientFactory, which pools the handlers.
-builder.Services.AddHttpClient<IApexPostClient, ApexPostClient>(client => client.BaseAddress = new Uri(baseUrl));
+// The generated client takes its HttpClient from IHttpClientFactory, which pools the handlers. The bearer token
+// handler signs every request.
+builder.Services.AddTransient<BearerTokenHandler>();
+builder.Services.AddHttpClient<IApexPostClient, ApexPostClient>(client => client.BaseAddress = new Uri(baseUrl))
+    .AddHttpMessageHandler<BearerTokenHandler>();
 builder.Services.AddTransient<ConsumerDemo>();
 
 using var host = builder.Build();
