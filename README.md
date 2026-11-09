@@ -64,7 +64,7 @@ dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --sta
 dotnet test ApexPost.slnx
 ```
 
-This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped) and the Week 4 project `ApexPost.Courier.Offline.Tests` (95 tests that use an embedded database and need no server). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
+This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), the Week 4 project `ApexPost.Courier.Offline.Tests` (95 tests that use an embedded database and need no server), and `ApexPost.Api.Tests` (83 tests with no database, and 8 more reported as skipped). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
 
 ```bash
 APEXPOST_TEST_SQLSERVER="Server=localhost;User Id=<user>;Password=<password>;TrustServerCertificate=True" dotnet test ApexPost.slnx
@@ -268,6 +268,30 @@ dotnet test ApexPost.Courier.Offline.Tests
 
 Screenshots of the query results and the listener log, and the query plans, are in [`docs/week4-partA`](docs/week4-partA).
 
+## Week 4 Part B: the shipment API
+
+`ApexPost.Api` is an ASP.NET Core Web API with controllers, minimal hosting in `Program.cs`, and no `Startup.cs`. It reuses the Week 3 EF Core registration, and keeps shipments and scans in a new `tracking` schema of the same `ApexPostDb` database. The endpoints, status codes, validation rules and design are in [`API-NOTES.md`](API-NOTES.md).
+
+1. Set the connection string for the API. It reads the same `ApexPostDb` database as the Week 3 app, so use the same value:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True" --project ApexPost.Api
+```
+
+2. Run it. In Development it applies the tracking migrations and adds twelve fictional shipments, `APX-10000001` to `APX-10000012`:
+
+```bash
+dotnet run --project ApexPost.Api --launch-profile https
+```
+
+To apply the tracking migrations yourself instead, set `APEXPOST_DESIGN_CONNECTION` as for Week 3 and run:
+
+```bash
+dotnet ef database update --project ApexPost.Tracking.Infrastructure --startup-project ApexPost.Tracking.Infrastructure --context TrackingDbContext
+```
+
+3. Send the requests in [`ApexPost.Api/ApexPost.Api.http`](ApexPost.Api/ApexPost.Api.http) from Visual Studio, Rider or the VS Code REST Client. Every endpoint has a success request and a failure request.
+
 ## Solution layout
 
 - `ApexPost.Domain`: entities, rules, events, enums, value objects. It references nothing.
@@ -278,5 +302,9 @@ Screenshots of the query results and the listener log, and the query plans, are 
 - `ApexPost.Courier.Offline`: Week 4 Part A, the courier's offline store (see the section below). It does not reference any Week 3 project.
 - `ApexPost.Courier.Offline.Harness`: the console test harness for it.
 - `ApexPost.Courier.Offline.Tests`: its tests.
+- `ApexPost.Tracking`: Week 4 Part B, the shipment and scan domain and `ShipmentService`. It references the Week 3 Application project for `IBranchRepository`.
+- `ApexPost.Tracking.Infrastructure`: `TrackingDbContext`, its migrations and the EF store.
+- `ApexPost.Api`: the Web API.
+- `ApexPost.Api.Tests`: domain, service and HTTP tests, and SQL Server tests that run when `APEXPOST_TEST_SQLSERVER` is set.
 
 See `DESIGN.md` for the architecture and ER diagrams, middleware sequence, filters, ADRs and security decisions, and `PERFORMANCE.md` for index evidence.

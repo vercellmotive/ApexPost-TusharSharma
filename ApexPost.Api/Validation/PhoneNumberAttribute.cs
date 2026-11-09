@@ -1,0 +1,35 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
+
+namespace ApexPost.Api.Validation;
+
+/// <summary>
+/// A custom rule for phone numbers: an optional leading +, then digits that may be grouped with spaces, hyphens or
+/// brackets, holding 8 to 15 digits in all (the E.164 limit). The built-in [Phone] accepts almost any text.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
+public sealed partial class PhoneNumberAttribute()
+    : ValidationAttribute("The {0} field must be a phone number of 8 to 15 digits, such as +61 2 5550 1234.")
+{
+    public const int MinimumDigits = 8;
+    public const int MaximumDigits = 15;
+
+    [GeneratedRegex(@"^\+?(?:[0-9]+|\([0-9]+\))(?:[ -]?(?:[0-9]+|\([0-9]+\)))*$", RegexOptions.CultureInvariant)]
+    private static partial Regex Shape();
+
+    public override bool IsValid(object? value)
+    {
+        if (value is null)
+        {
+            return true;
+        }
+
+        if (value is not string phone || !Shape().IsMatch(phone))
+        {
+            return false;
+        }
+
+        var digits = phone.Count(char.IsAsciiDigit);
+        return digits is >= MinimumDigits and <= MaximumDigits;
+    }
+}
