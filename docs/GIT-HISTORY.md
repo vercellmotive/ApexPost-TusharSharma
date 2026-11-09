@@ -71,7 +71,7 @@ Repository: <https://github.com/vercellmotive/ApexPost-TusharSharma> (earlier pu
 
 ## Week 4: branches and pull requests
 
-The four parts are chained: each branch starts from the one before it, so merge them in order, A, B, C, D. Pull requests #17 to #20 were merged into `master` in that order; the review fixes that came after were not in them and are in [#21](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/21). The pull request page is the record of when each merged. The commits are listed as they stood when this file was written (the review fixes for Part D are on `week4-partD` after them).
+The four parts are chained: each branch starts from the one before it, so merge them in order, A, B, C, D. All of them are merged into `master`: #17 to #20 in order, A to D; then #21, #22 and #23, which hold the review fixes and the later documentation fixes (some commits were pushed after an earlier PR had merged, so they went into the next one). The pull request page is the record of when each merged.
 
 | PR | Branch | Part |
 |---|---|---|
@@ -79,6 +79,9 @@ The four parts are chained: each branch starts from the one before it, so merge 
 | [#18](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/18) | `week4-partB` | Part B: the shipment REST API |
 | [#19](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/19) | `week4-partC` | Part C: OpenAPI, versioning and the client SDK |
 | [#20](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/20) | `week4-partD` | Part D: security and the courier app |
+| [#21](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/21) | `week4-review-fixes` | Review fixes: security hardening, sync bugs, refreshed evidence |
+| [#22](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/22) | `week4-final-review-fixes` | Dev-token guards, 429 declared, AllowedHosts, API-NOTES and README fixes |
+| [#23](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/23) | `week4-review-docs-and-capture` | Wording fixes and the evidence capture scripts |
 
 ### Part A: the courier offline store (`week4-partA`)
 
