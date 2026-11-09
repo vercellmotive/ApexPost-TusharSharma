@@ -364,6 +364,8 @@ In Development only, and only because `appsettings.Development.json` sets `Jwt:A
 
 ### The courier app
 
+A 4½-minute demo video of login, offline scans, automatic sync, 401/403 and the circuit breaker is in [`docs/week4-partD/demo.mp4`](docs/week4-partD/demo.mp4), with a description in [`docs/week4-partD/README.md`](docs/week4-partD/README.md).
+
 `ApexPost.Courier` is a .NET MAUI app with four screens: Login, New Scan, Pending Scans and Sync Status. Its logic is in `ApexPost.Courier.Core`, which needs no MAUI workload and is tested by `ApexPost.Courier.Core.Tests`:
 
 | Part | Where |
