@@ -1,7 +1,9 @@
 using ApexPost.Api.Contracts;
 using ApexPost.Api.Errors;
 using ApexPost.Tracking.Application;
+using ApexPost.Api.Security;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers.V1;
@@ -14,6 +16,8 @@ namespace ApexPost.Api.Controllers.V1;
 [ApiVersion(1.0, Deprecated = true)]
 [Route("api/v{version:apiVersion}/shipments")]
 [Tags("Shipments")]
+[Authorize]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class ShipmentsController(IShipmentService shipments) : ControllerBase
 {
@@ -50,6 +54,8 @@ public sealed class ShipmentsController(IShipmentService shipments) : Controller
     /// <response code="409">A shipment with this tracking number already exists.</response>
     [EndpointSummary("Create a shipment")]
     [HttpPost(Name = "CreateShipment")]
+    [Authorize(Roles = ApexPostRoles.Admin)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [Consumes("application/json")]
     [ProducesResponseType<ShipmentResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -70,6 +76,8 @@ public sealed class ShipmentsController(IShipmentService shipments) : Controller
     /// <response code="409">The shipment is Delivered or Failed, or another request changed it first.</response>
     [EndpointSummary("Replace shipment details")]
     [HttpPut("{trackingNumber:trackingNumber}", Name = "UpdateShipment")]
+    [Authorize(Roles = ApexPostRoles.Admin)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [Consumes("application/json")]
     [ProducesResponseType<ShipmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -89,6 +97,8 @@ public sealed class ShipmentsController(IShipmentService shipments) : Controller
     /// <response code="409">The move is not allowed from the current status, or another request changed the shipment first.</response>
     [EndpointSummary("Change shipment status")]
     [HttpPatch("{trackingNumber:trackingNumber}/status", Name = "UpdateShipmentStatus")]
+    [Authorize(Roles = ApexPostRoles.Courier)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [Consumes("application/json")]
     [ProducesResponseType<ShipmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -108,6 +118,8 @@ public sealed class ShipmentsController(IShipmentService shipments) : Controller
     /// <response code="409">The shipment has moved past Created.</response>
     [EndpointSummary("Delete a shipment")]
     [HttpDelete("{trackingNumber:trackingNumber}", Name = "DeleteShipment")]
+    [Authorize(Roles = ApexPostRoles.Admin)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

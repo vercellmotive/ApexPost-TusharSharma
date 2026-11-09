@@ -68,7 +68,7 @@ public sealed class ShipmentServiceTests
         Assert.Equal(ServiceErrorKind.NotFound, (await _service.ChangeStatusAsync(missing, ShipmentStatus.PickedUp)).Error?.Kind);
         Assert.Equal(ServiceErrorKind.NotFound, (await _service.DeleteAsync(missing)).Error?.Kind);
         Assert.Equal(ServiceErrorKind.NotFound, (await _service.GetScansAsync(missing)).Error?.Kind);
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.UploadScansAsync(missing, [Make.Scan()])).Error?.Kind);
+        Assert.Equal(ServiceErrorKind.NotFound, (await _service.UploadScansAsync(missing, [Make.Scan()], Make.CourierId)).Error?.Kind);
     }
 
     [Fact]
@@ -136,8 +136,8 @@ public sealed class ShipmentServiceTests
         _store.Seed(Make.Shipment());
         IncomingScan[] batch = [Make.Scan(), Make.Scan(type: ScanType.InTransit)];
 
-        var first = await _service.UploadScansAsync("APX-10000001", batch);
-        var second = await _service.UploadScansAsync("APX-10000001", batch);
+        var first = await _service.UploadScansAsync("APX-10000001", batch, Make.CourierId);
+        var second = await _service.UploadScansAsync("APX-10000001", batch, Make.CourierId);
 
         Assert.Equal((2, 0, 0), (first.Value!.Accepted, first.Value.DuplicatesSkipped, first.Value.Rejected));
         Assert.Equal((0, 2, 0), (second.Value!.Accepted, second.Value.DuplicatesSkipped, second.Value.Rejected));
@@ -150,7 +150,7 @@ public sealed class ShipmentServiceTests
         _store.Seed(Make.Shipment());
         var scan = Make.Scan();
 
-        var result = await _service.UploadScansAsync("APX-10000001", [scan, scan]);
+        var result = await _service.UploadScansAsync("APX-10000001", [scan, scan], Make.CourierId);
 
         Assert.Equal((1, 1), (result.Value!.Accepted, result.Value.DuplicatesSkipped));
     }
@@ -163,7 +163,7 @@ public sealed class ShipmentServiceTests
         ScanId.TryParse(scan.ScanId, out var id);
         _store.RaceScans.Add(TrackingScan.Record(id, shipment.Id, scan.ScanType, scan.CourierId, scan.Location, scan.ScannedAtUtc, null, null, _clock.Now));
 
-        var result = await _service.UploadScansAsync("APX-10000001", [scan, Make.Scan()]);
+        var result = await _service.UploadScansAsync("APX-10000001", [scan, Make.Scan()], Make.CourierId);
 
         Assert.Equal((1, 1), (result.Value!.Accepted, result.Value.DuplicatesSkipped));
         Assert.Equal(2, _store.AllScans.Count);
@@ -184,7 +184,7 @@ public sealed class ShipmentServiceTests
         var badId = Make.Scan(scanId: "scan::not-a-guid");
         var good = Make.Scan();
 
-        var result = await _service.UploadScansAsync("APX-10000001", [taken, future, beforeCreation, unsigned, badId, good]);
+        var result = await _service.UploadScansAsync("APX-10000001", [taken, future, beforeCreation, unsigned, badId, good], Make.CourierId);
 
         Assert.Equal(1, result.Value!.Accepted);
         Assert.Equal(5, result.Value.Rejected);
@@ -204,7 +204,7 @@ public sealed class ShipmentServiceTests
         var result = await _service.UploadScansAsync("APX-10000001", [
             Make.Scan(at: _clock.Now + ShipmentService.ScanClockTolerance),
             Make.Scan(at: TestClock.Start - ShipmentService.ScanClockTolerance),
-        ]);
+        ], Make.CourierId);
 
         Assert.Equal(2, result.Value!.Accepted);
     }
@@ -216,7 +216,7 @@ public sealed class ShipmentServiceTests
         await _service.UploadScansAsync("APX-10000001", [
             Make.Scan(type: ScanType.Pickup, at: TestClock.Start.AddMinutes(10)),
             Make.Scan(type: ScanType.InTransit, at: TestClock.Start.AddMinutes(40)),
-        ]);
+        ], Make.CourierId);
 
         var view = (await _service.GetAsync("APX-10000001")).Value!;
 

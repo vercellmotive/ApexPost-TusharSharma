@@ -17,7 +17,12 @@ public interface IShipmentService
 
     Task<ServiceResult<IReadOnlyList<Domain.TrackingScan>>> GetScansAsync(string trackingNumber, CancellationToken ct = default);
 
-    Task<ServiceResult<ScanUploadOutcome>> UploadScansAsync(string trackingNumber, IReadOnlyList<IncomingScan> scans, CancellationToken ct = default);
+    /// <param name="uploadingCourierId">The courier id of the signed-in courier. Every scan must carry it.</param>
+    Task<ServiceResult<ScanUploadOutcome>> UploadScansAsync(
+        string trackingNumber,
+        IReadOnlyList<IncomingScan> scans,
+        string uploadingCourierId,
+        CancellationToken ct = default);
 }
 
 /// <summary>The value of a use case that succeeds with nothing to return.</summary>

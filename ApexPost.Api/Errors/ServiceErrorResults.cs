@@ -19,6 +19,8 @@ internal static class ServiceErrorResults
                 return controller.Problem(detail: error.Detail, statusCode: StatusCodes.Status404NotFound, title: error.Title);
             case ServiceErrorKind.Conflict:
                 return controller.Problem(detail: error.Detail, statusCode: StatusCodes.Status409Conflict, title: error.Title);
+            case ServiceErrorKind.Forbidden:
+                return controller.Problem(detail: error.Detail, statusCode: StatusCodes.Status403Forbidden, title: error.Title);
             default:
                 throw new ArgumentOutOfRangeException(nameof(error), error.Kind, "Unknown service error kind.");
         }

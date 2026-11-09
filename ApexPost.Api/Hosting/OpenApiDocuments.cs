@@ -24,6 +24,7 @@ internal static class OpenApiDocuments
                 options.AddOperationTransformer<OperationTransformer>();
                 options.AddSchemaTransformer(new EnumSchemaTransformer(documentName));
                 options.AddDocumentTransformer<RequiredRequestFieldsTransformer>();
+                options.AddDocumentTransformer<SecuritySchemesTransformer>();
             });
         }
 
@@ -134,7 +135,45 @@ internal static class OpenApiDocuments
         }
     }
 
-    /// <summary>Marks the operations of a deprecated version, and gives the tracking number its format.</summary>
+    /// <summary>
+    /// Declares the two ways to authenticate. Swagger UI shows an Authorize button for each: paste a token from
+    /// /dev/token for Bearer, or a partner key for ApiKey.
+    /// </summary>
+    internal sealed class SecuritySchemesTransformer : IOpenApiDocumentTransformer
+    {
+        public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
+        {
+            document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+            document.Components.SecuritySchemes[BearerScheme] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "A JWT access token. In Development, get one from POST /dev/token.",
+            };
+            if (document.Paths.Keys.Any(path => path.Contains("/partner/", StringComparison.Ordinal)))
+            {
+                document.Components.SecuritySchemes[ApiKeyScheme] = new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.ApiKey,
+                    Name = Security.PartnerApiKeyFilter.HeaderName,
+                    In = ParameterLocation.Header,
+                    Description = "A partner API key, for the read-only partner route.",
+                };
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private const string BearerScheme = "Bearer";
+    private const string ApiKeyScheme = "ApiKey";
+
+    /// <summary>
+    /// Marks the operations of a deprecated version, gives the tracking number its format, and says which security
+    /// scheme each operation needs.
+    /// </summary>
     internal sealed class OperationTransformer : IOpenApiOperationTransformer
     {
         public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
@@ -143,6 +182,11 @@ internal static class OpenApiDocuments
             {
                 operation.Deprecated = true;
             }
+
+            var anonymous = context.Description.ActionDescriptor.EndpointMetadata.OfType<Microsoft.AspNetCore.Authorization.IAllowAnonymous>().Any();
+            var scheme = anonymous ? ApiKeyScheme : BearerScheme;
+            operation.Security ??= [];
+            operation.Security.Add(new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference(scheme, context.Document)] = [] });
 
             // The route constraint is invisible to the generator, so the pattern is added here.
             foreach (var parameter in operation.Parameters ?? [])

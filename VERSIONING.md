@@ -24,6 +24,8 @@ APEXPOST_UPDATE_CONTRACTS=1 dotnet test ApexPost.Api.Tests --filter ContractTest
 | v2 | `latestScan { scanType, location, scannedAtUtc }` added, `null` before the first scan | No on its own | An added field is ignored by tolerant readers. It shipped together with the two breaking changes, so it is v2 only |
 | v1, v2 | Requests, routes, status codes and validation | No | The same in both versions. A v2 client sends exactly the v1 request bodies |
 | v1, v2 | Scan endpoints (`/scans`) | No | The scan contract did not change, so one controller serves both versions |
+| v1, v2 | Part D: every endpoint needs a bearer token, with roles for writes (401 and 403 added to every operation) | **Yes**, on purpose | Security fixes go into every supported version. An anonymous client must now sign in. The bodies did not change |
+| v2 | Part D: `GET /api/v2/partner/shipments/{trackingNumber}` with an `X-Api-Key` header | No | A new endpoint. Existing clients are unaffected |
 
 Rule of thumb: adding an optional request field, a response field, an endpoint or a header is non-breaking. Removing or renaming a field, changing its type or meaning, making an optional field required, or changing a status code is breaking and needs a new version.
 

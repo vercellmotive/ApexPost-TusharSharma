@@ -2,9 +2,46 @@
 #   dotnet run --project ApexPost.Api --launch-profile https
 # In Development the API adds fictional shipments APX-10000001 to APX-10000012.
 # Every endpoint has a success request and a failure request, for v1 (deprecated) and for v2.
-# Run each section top to bottom: some requests use the shipment the section's first POST creates.
+# Run the token requests first, then each section top to bottom: some requests use the shipment the
+# section's first POST creates.
+#
+# Tokens come from POST /dev/token, which exists only in Development. Set the partner key below to the value
+# you stored with: dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" "<key>" --project ApexPost.Api
 
 @baseUrl = https://localhost:7180
+@partnerKey = paste-the-partner-key-from-your-user-secrets
+
+# ===================================================================================================
+# Development tokens. The named responses feed the Authorization headers below.
+# ===================================================================================================
+
+### Token for a courier who is also an admin: 200
+# @name staff
+POST {{baseUrl}}/dev/token
+Content-Type: application/json
+
+{ "roles": ["Admin", "Courier"], "courierId": "CR-1001" }
+
+### Token for courier CR-1001 only: 200
+# @name courier
+POST {{baseUrl}}/dev/token
+Content-Type: application/json
+
+{ "roles": ["Courier"], "courierId": "CR-1001" }
+
+### Token for an admin only: 200
+# @name admin
+POST {{baseUrl}}/dev/token
+Content-Type: application/json
+
+{ "roles": ["Admin"] }
+
+### Token request: 400, a Courier token needs a courierId
+POST {{baseUrl}}/dev/token
+Content-Type: application/json
+
+{ "roles": ["Courier"] }
+
 
 # ===================================================================================================
 # Version 1 (deprecated): the Part B contract. Responses carry Deprecation and Sunset headers.
@@ -12,12 +49,15 @@
 
 ### v1 list shipments: 200, status as a number in v1
 GET {{baseUrl}}/api/v1/shipments?page=1&pageSize=5&status=InTransit&city=sydney
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 list shipments: 400, pageSize above the maximum of 50
 GET {{baseUrl}}/api/v1/shipments?pageSize=51
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 create a shipment: 201 with a Location header
 POST {{baseUrl}}/api/v1/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -32,6 +72,7 @@ Content-Type: application/json
 
 ### v1 create a shipment: 409, the tracking number already exists (run after the request above)
 POST {{baseUrl}}/api/v1/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -46,6 +87,7 @@ Content-Type: application/json
 
 ### v1 create a shipment: 400 ValidationProblemDetails (bad tracking number, phone and weight; no name)
 POST {{baseUrl}}/api/v1/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -59,6 +101,7 @@ Content-Type: application/json
 
 ### v1 create a shipment: 400, the Week 3 branch does not exist
 POST {{baseUrl}}/api/v1/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -73,18 +116,22 @@ Content-Type: application/json
 
 ### v1 create a shipment: 415, wrong content type
 POST {{baseUrl}}/api/v1/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: text/plain
 
 trackingNumber=APX-20000001
 
 ### v1 get a shipment: 200
 GET {{baseUrl}}/api/v1/shipments/APX-20000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 get a shipment: 404, unknown tracking number
 GET {{baseUrl}}/api/v1/shipments/APX-99999999
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 replace details: 200
 PUT {{baseUrl}}/api/v1/shipments/APX-20000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -97,6 +144,7 @@ Content-Type: application/json
 
 ### v1 replace details: 400, weight is required
 PUT {{baseUrl}}/api/v1/shipments/APX-20000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -108,18 +156,21 @@ Content-Type: application/json
 
 ### v1 change status: 200, Created to PickedUp
 PATCH {{baseUrl}}/api/v1/shipments/APX-20000001/status
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "status": "PickedUp" }
 
 ### v1 change status: 409, PickedUp cannot jump to Delivered
 PATCH {{baseUrl}}/api/v1/shipments/APX-20000001/status
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "status": "Delivered" }
 
 ### v1 upload offline scans: 200 with accepted, duplicatesSkipped and rejected
 POST {{baseUrl}}/api/v1/shipments/APX-20000001/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -131,6 +182,7 @@ Content-Type: application/json
 
 ### v1 upload the same scans again: 200, both counted in duplicatesSkipped
 POST {{baseUrl}}/api/v1/shipments/APX-20000001/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -142,6 +194,7 @@ Content-Type: application/json
 
 ### v1 upload scans: 400, a Delivered scan needs a signature and a scan cannot be in the future
 POST {{baseUrl}}/api/v1/shipments/APX-20000001/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -152,18 +205,23 @@ Content-Type: application/json
 
 ### v1 scan history: 200, oldest first
 GET {{baseUrl}}/api/v1/shipments/APX-20000001/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 scan history: 404, unknown tracking number
 GET {{baseUrl}}/api/v1/shipments/APX-99999999/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 delete: 409, only a Created shipment can be deleted (this one is PickedUp now)
 DELETE {{baseUrl}}/api/v1/shipments/APX-20000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 delete: 204, a seeded shipment that is still Created (APX-10000005)
 DELETE {{baseUrl}}/api/v1/shipments/APX-10000005
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v1 delete: 404, unknown tracking number
 DELETE {{baseUrl}}/api/v1/shipments/APX-99999999
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 # ===================================================================================================
 # Version 2: nested recipient, latestScan and status as a name.
@@ -171,12 +229,15 @@ DELETE {{baseUrl}}/api/v1/shipments/APX-99999999
 
 ### v2 list shipments: 200, status as a name in v2, with a nested recipient and latestScan
 GET {{baseUrl}}/api/v2/shipments?page=1&pageSize=5&status=InTransit&city=sydney
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 list shipments: 400, pageSize above the maximum of 50
 GET {{baseUrl}}/api/v2/shipments?pageSize=51
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 create a shipment: 201 with a Location header
 POST {{baseUrl}}/api/v2/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -191,6 +252,7 @@ Content-Type: application/json
 
 ### v2 create a shipment: 409, the tracking number already exists (run after the request above)
 POST {{baseUrl}}/api/v2/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -205,6 +267,7 @@ Content-Type: application/json
 
 ### v2 create a shipment: 400 ValidationProblemDetails (bad tracking number, phone and weight; no name)
 POST {{baseUrl}}/api/v2/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -218,6 +281,7 @@ Content-Type: application/json
 
 ### v2 create a shipment: 400, the Week 3 branch does not exist
 POST {{baseUrl}}/api/v2/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -232,18 +296,22 @@ Content-Type: application/json
 
 ### v2 create a shipment: 415, wrong content type
 POST {{baseUrl}}/api/v2/shipments
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: text/plain
 
 trackingNumber=APX-20000002
 
 ### v2 get a shipment: 200
 GET {{baseUrl}}/api/v2/shipments/APX-20000002
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 get a shipment: 404, unknown tracking number
 GET {{baseUrl}}/api/v2/shipments/APX-99999999
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 replace details: 200
 PUT {{baseUrl}}/api/v2/shipments/APX-20000002
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -256,6 +324,7 @@ Content-Type: application/json
 
 ### v2 replace details: 400, weight is required
 PUT {{baseUrl}}/api/v2/shipments/APX-20000002
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -267,18 +336,21 @@ Content-Type: application/json
 
 ### v2 change status: 200, Created to PickedUp
 PATCH {{baseUrl}}/api/v2/shipments/APX-20000002/status
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "status": "PickedUp" }
 
 ### v2 change status: 409, PickedUp cannot jump to Delivered
 PATCH {{baseUrl}}/api/v2/shipments/APX-20000002/status
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "status": "Delivered" }
 
 ### v2 upload offline scans: 200 with accepted, duplicatesSkipped and rejected
 POST {{baseUrl}}/api/v2/shipments/APX-20000002/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -290,6 +362,7 @@ Content-Type: application/json
 
 ### v2 upload the same scans again: 200, both counted in duplicatesSkipped
 POST {{baseUrl}}/api/v2/shipments/APX-20000002/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -301,6 +374,7 @@ Content-Type: application/json
 
 ### v2 upload scans: 400, a Delivered scan needs a signature and a scan cannot be in the future
 POST {{baseUrl}}/api/v2/shipments/APX-20000002/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -311,18 +385,23 @@ Content-Type: application/json
 
 ### v2 scan history: 200, oldest first
 GET {{baseUrl}}/api/v2/shipments/APX-20000002/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 scan history: 404, unknown tracking number
 GET {{baseUrl}}/api/v2/shipments/APX-99999999/scans
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 delete: 409, only a Created shipment can be deleted (this one is PickedUp now)
 DELETE {{baseUrl}}/api/v2/shipments/APX-20000002
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 delete: 204, a seeded shipment that is still Created (APX-10000009)
 DELETE {{baseUrl}}/api/v2/shipments/APX-10000009
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### v2 delete: 404, unknown tracking number
 DELETE {{baseUrl}}/api/v2/shipments/APX-99999999
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 # ===================================================================================================
 # Part B URLs without a version keep working: they are served as v1 and carry the deprecation headers.
@@ -330,6 +409,70 @@ DELETE {{baseUrl}}/api/v2/shipments/APX-99999999
 
 ### Unversioned (served as v1): 200
 GET {{baseUrl}}/api/shipments/APX-10000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}
 
 ### Unknown version: 404
 GET {{baseUrl}}/api/v3/shipments/APX-10000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}
+
+# ===================================================================================================
+# Security: 401, 403, the courierId rule and the partner API key (D2, D3).
+# ===================================================================================================
+
+### No token: 401 ProblemDetails with a Bearer challenge
+GET {{baseUrl}}/api/v2/shipments/APX-10000001
+
+### Invalid token: 401 "The access token is not valid."
+GET {{baseUrl}}/api/v2/shipments/APX-10000001
+Authorization: Bearer not-a-real-token
+
+### Valid courier token, any signed-in user may read: 200
+GET {{baseUrl}}/api/v2/shipments/APX-10000001
+Authorization: Bearer {{courier.response.body.$.accessToken}}
+
+### Courier deleting a shipment: 403, DELETE is Admin only
+DELETE {{baseUrl}}/api/v2/shipments/APX-10000001
+Authorization: Bearer {{courier.response.body.$.accessToken}}
+
+### Admin uploading scans: 403, scan upload is Courier only
+POST {{baseUrl}}/api/v2/shipments/APX-10000001/scans
+Authorization: Bearer {{admin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "scans": [ { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3501", "scanType": "Pickup", "courierId": "CR-1001", "location": "Depot", "scannedAtUtc": "{{$datetime iso8601}}" } ] }
+
+### Admin changing status: 403, status PATCH is Courier only
+PATCH {{baseUrl}}/api/v2/shipments/APX-10000001/status
+Authorization: Bearer {{admin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "status": "PickedUp" }
+
+### Courier CR-1001 uploading a scan recorded by CR-2002: 403
+POST {{baseUrl}}/api/v2/shipments/APX-10000001/scans
+Authorization: Bearer {{courier.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "scans": [ { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3502", "scanType": "Pickup", "courierId": "CR-2002", "location": "Depot", "scannedAtUtc": "{{$datetime iso8601}}" } ] }
+
+### Courier CR-1001 uploading their own scan: 200
+POST {{baseUrl}}/api/v2/shipments/APX-10000001/scans
+Authorization: Bearer {{courier.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "scans": [ { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3503", "scanType": "Pickup", "courierId": "CR-1001", "location": "Depot", "scannedAtUtc": "{{$datetime iso8601}}" } ] }
+
+### Partner route with a valid API key: 200, no recipient details
+GET {{baseUrl}}/api/v2/partner/shipments/APX-10000001
+X-Api-Key: {{partnerKey}}
+
+### Partner route with an invalid API key: 401
+GET {{baseUrl}}/api/v2/partner/shipments/APX-10000001
+X-Api-Key: not-a-valid-partner-key-0123456789abcdef
+
+### Partner route with no API key: 401
+GET {{baseUrl}}/api/v2/partner/shipments/APX-10000001
+
+### Partner route with a bearer token instead of a key: 401, partners use keys
+GET {{baseUrl}}/api/v2/partner/shipments/APX-10000001
+Authorization: Bearer {{staff.response.body.$.accessToken}}

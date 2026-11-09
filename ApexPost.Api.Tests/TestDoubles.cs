@@ -282,6 +282,8 @@ public static class Make
         return shipment;
     }
 
+    public const string CourierId = "CR-1001";
+
     public static string NewScanId() => ScanId.Format(Guid.NewGuid());
 
     public static IncomingScan Scan(
@@ -289,5 +291,5 @@ public static class Make
         ScanType type = ScanType.Pickup,
         DateTimeOffset? at = null,
         string? signature = null) =>
-        new(scanId ?? NewScanId(), type, "CR-1001", "Sydney depot", at ?? TestClock.Start.AddMinutes(30), "Fictional scan", signature);
+        new(scanId ?? NewScanId(), type, CourierId, "Sydney depot", at ?? TestClock.Start.AddMinutes(30), "Fictional scan", signature);
 }

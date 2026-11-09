@@ -8,6 +8,9 @@ public enum ServiceErrorKind
     Validation,
     NotFound,
     Conflict,
+
+    /// <summary>The caller is signed in but may not do this, such as uploading another courier's scans.</summary>
+    Forbidden,
 }
 
 /// <param name="Field">For a validation error, the input field it belongs to.</param>

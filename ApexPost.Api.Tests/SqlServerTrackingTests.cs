@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ApexPost.Api.Security;
 using ApexPost.Application.Interfaces;
 using ApexPost.Tracking.Application;
 using ApexPost.Tracking.Domain;
@@ -132,7 +133,7 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         var outcomes = await Task.WhenAll(Enumerable.Range(0, 4).Select(async _ =>
         {
             await using var db = database.CreateContext();
-            return (await database.CreateService(db, _clock).UploadScansAsync(trackingNumber, batch)).Value!;
+            return (await database.CreateService(db, _clock).UploadScansAsync(trackingNumber, batch, Make.CourierId)).Value!;
         }));
 
         Assert.Equal(20, outcomes.Sum(outcome => outcome.Accepted));
@@ -154,7 +155,7 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
             await database.CreateService(db, _clock).UploadScansAsync(withScans, [
                 Make.Scan(type: ScanType.Pickup, at: TestClock.Start.AddMinutes(5)),
                 Make.Scan(type: ScanType.InTransit, at: TestClock.Start.AddMinutes(25)),
-            ]);
+            ], Make.CourierId);
         }
 
         await using var read = database.CreateContext();
@@ -172,7 +173,7 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         var trackingNumber = await CreateShipmentAsync();
         await using var db = database.CreateContext();
         var service = database.CreateService(db, _clock);
-        await service.UploadScansAsync(trackingNumber, [Make.Scan()]);
+        await service.UploadScansAsync(trackingNumber, [Make.Scan()], Make.CourierId);
 
         Assert.True((await service.DeleteAsync(trackingNumber)).Succeeded);
 
@@ -199,6 +200,7 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("ConnectionStrings:ApexPostDb", database.ConnectionString);
+            ApiFactory.UseTestSecurity(builder);
             builder.ConfigureLogging(logging => logging.ClearProviders());
             builder.ConfigureTestServices(services =>
             {
@@ -207,6 +209,7 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
             });
         });
         var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", ApiFactory.Token(ApexPostRoles.Admin, ApexPostRoles.Courier));
         var trackingNumber = NextTrackingNumber();
 
         var created = await client.PostAsJsonAsync("/api/v2/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));

@@ -1,7 +1,9 @@
 using ApexPost.Api.Contracts;
 using ApexPost.Api.Errors;
 using ApexPost.Tracking.Application;
+using ApexPost.Api.Security;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers;
@@ -15,6 +17,8 @@ namespace ApexPost.Api.Controllers;
 [ApiVersion(2.0)]
 [Route("api/v{version:apiVersion}/shipments/{trackingNumber:trackingNumber}/scans")]
 [Tags("Scans")]
+[Authorize]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class ShipmentScansController(IShipmentService shipments) : ControllerBase
 {
@@ -23,8 +27,11 @@ public sealed class ShipmentScansController(IShipmentService shipments) : Contro
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
     /// <param name="request">One to 100 scans.</param>
     /// <response code="200">How many scans were accepted, skipped as duplicates and rejected, with the reasons.</response>
+    /// <response code="403">The token is not a Courier token, or a scan carries another courier's id.</response>
     [EndpointSummary("Upload offline scans")]
     [HttpPost(Name = "UploadScans")]
+    [Authorize(Roles = ApexPostRoles.Courier)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [Consumes("application/json")]
     [ProducesResponseType<ScanUploadResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -32,7 +39,8 @@ public sealed class ShipmentScansController(IShipmentService shipments) : Contro
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
     public async Task<ActionResult<ScanUploadResponse>> Upload(string trackingNumber, ScanUploadRequest request, CancellationToken ct)
     {
-        var result = await shipments.UploadScansAsync(trackingNumber, request.ToIncomingScans(), ct);
+        var courierId = User.FindFirst(ApexPostRoles.CourierIdClaim)?.Value ?? string.Empty;
+        var result = await shipments.UploadScansAsync(trackingNumber, request.ToIncomingScans(), courierId, ct);
         return result.Succeeded ? Ok(result.Value.ToResponse()) : this.ToProblem(result.Error);
     }
 

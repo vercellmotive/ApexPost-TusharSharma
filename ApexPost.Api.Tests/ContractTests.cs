@@ -20,7 +20,7 @@ public sealed class ContractTests : IDisposable
     [InlineData("v2")]
     public async Task The_served_document_matches_the_committed_contract(string version)
     {
-        var served = await _development.CreateClient().GetStringAsync($"/openapi/{version}.json");
+        var served = await _development.CreateAnonymousClient().GetStringAsync($"/openapi/{version}.json");
         var path = Path.Combine(RepositoryRoot(), "contracts", $"{version}.json");
 
         if (Environment.GetEnvironmentVariable("APEXPOST_UPDATE_CONTRACTS") == "1")
@@ -46,7 +46,7 @@ public sealed class ContractTests : IDisposable
         Assert.All(Operations(v2), operation => Assert.Null(operation["deprecated"]));
         Assert.All(Operations(v2), operation => Assert.False(string.IsNullOrEmpty((string?)operation["operationId"])));
         Assert.Equal(
-            ["CreateShipment", "DeleteShipment", "GetShipment", "ListScans", "ListShipments", "UpdateShipment", "UpdateShipmentStatus", "UploadScans"],
+            ["CreateShipment", "DeleteShipment", "GetPartnerShipment", "GetShipment", "ListScans", "ListShipments", "UpdateShipment", "UpdateShipmentStatus", "UploadScans"],
             Operations(v2).Select(operation => (string)operation["operationId"]!).Order(StringComparer.Ordinal));
     }
 
@@ -59,10 +59,24 @@ public sealed class ContractTests : IDisposable
         {
             var codes = operation["responses"]!.AsObject().Select(response => response.Key).ToList();
             Assert.Contains("500", codes);
+            Assert.Contains("401", codes);
             Assert.Contains(codes, code => code is "200" or "201" or "204");
-            Assert.Contains((string)operation["tags"]![0]!, new[] { "Shipments", "Scans" });
+            Assert.Contains((string)operation["tags"]![0]!, new[] { "Shipments", "Scans", "Partner" });
             Assert.False(string.IsNullOrEmpty((string?)operation["summary"]));
         }
+    }
+
+    [Fact]
+    public async Task V2_declares_the_bearer_and_api_key_schemes_and_uses_them()
+    {
+        var v2 = JsonNode.Parse(await _development.CreateClient().GetStringAsync("/openapi/v2.json"))!;
+
+        var schemes = v2["components"]!["securitySchemes"]!;
+        Assert.Equal("bearer", (string?)schemes["Bearer"]!["scheme"]);
+        Assert.Equal("X-Api-Key", (string?)schemes["ApiKey"]!["name"]);
+        var partner = v2["paths"]!["/api/v2/partner/shipments/{trackingNumber}"]!["get"]!;
+        Assert.NotNull(partner["security"]![0]!["ApiKey"]);
+        Assert.NotNull(v2["paths"]!["/api/v2/shipments"]!["get"]!["security"]![0]!["Bearer"]);
     }
 
     [Theory]
