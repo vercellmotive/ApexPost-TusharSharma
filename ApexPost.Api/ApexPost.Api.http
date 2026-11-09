@@ -1,0 +1,163 @@
+# Requests for ApexPost.Api. Run the API with the https profile first:
+#   dotnet run --project ApexPost.Api --launch-profile https
+# In Development the API adds fictional shipments APX-10000001 to APX-10000012.
+# Each endpoint has a success request and at least one failure request. Run them top to bottom: some depend on
+# the shipment the first POST creates.
+
+@baseUrl = https://localhost:7180
+@tracking = APX-20000001
+
+### List shipments: 200, newest first, 20 a page by default
+GET {{baseUrl}}/api/shipments?page=1&pageSize=5&status=InTransit&city=sydney
+
+### List shipments: 400, pageSize above the maximum of 50
+GET {{baseUrl}}/api/shipments?pageSize=51
+
+### Create a shipment: 201 with a Location header
+POST {{baseUrl}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "{{tracking}}",
+  "originBranchCode": "B001",
+  "recipientName": "Mia Fictional",
+  "recipientPhone": "+61 2 5550 1234",
+  "recipientAddress": "12 Example Lane",
+  "city": "Sydney",
+  "weightKg": 2.5
+}
+
+### Create a shipment: 409, the tracking number already exists (run after the request above)
+POST {{baseUrl}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "{{tracking}}",
+  "originBranchCode": "B001",
+  "recipientName": "Mia Fictional",
+  "recipientPhone": "+61 2 5550 1234",
+  "recipientAddress": "12 Example Lane",
+  "city": "Sydney",
+  "weightKg": 2.5
+}
+
+### Create a shipment: 400 ValidationProblemDetails (bad tracking number, phone and weight; no name)
+POST {{baseUrl}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "APX-123",
+  "originBranchCode": "B001",
+  "recipientPhone": "call me",
+  "recipientAddress": "12 Example Lane",
+  "city": "Sydney",
+  "weightKg": 70.5
+}
+
+### Create a shipment: 400, the Week 3 branch does not exist
+POST {{baseUrl}}/api/shipments
+Content-Type: application/json
+
+{
+  "trackingNumber": "APX-20000002",
+  "originBranchCode": "B999",
+  "recipientName": "Mia Fictional",
+  "recipientPhone": "+61 2 5550 1234",
+  "recipientAddress": "12 Example Lane",
+  "city": "Sydney",
+  "weightKg": 2.5
+}
+
+### Create a shipment: 415, wrong content type
+POST {{baseUrl}}/api/shipments
+Content-Type: text/plain
+
+trackingNumber=APX-20000003
+
+### Get a shipment: 200
+GET {{baseUrl}}/api/shipments/{{tracking}}
+
+### Get a shipment: 404, unknown tracking number
+GET {{baseUrl}}/api/shipments/APX-99999999
+
+### Replace details: 200
+PUT {{baseUrl}}/api/shipments/{{tracking}}
+Content-Type: application/json
+
+{
+  "recipientName": "Noah Sample",
+  "recipientPhone": "02 5550 9876",
+  "recipientAddress": "3 Fictional Way",
+  "city": "Perth",
+  "weightKg": 4
+}
+
+### Replace details: 400, weight is required
+PUT {{baseUrl}}/api/shipments/{{tracking}}
+Content-Type: application/json
+
+{
+  "recipientName": "Noah Sample",
+  "recipientPhone": "02 5550 9876",
+  "recipientAddress": "3 Fictional Way",
+  "city": "Perth"
+}
+
+### Change status: 200, Created to PickedUp
+PATCH {{baseUrl}}/api/shipments/{{tracking}}/status
+Content-Type: application/json
+
+{ "status": "PickedUp" }
+
+### Change status: 409, PickedUp cannot jump to Delivered
+PATCH {{baseUrl}}/api/shipments/{{tracking}}/status
+Content-Type: application/json
+
+{ "status": "Delivered" }
+
+### Upload offline scans: 200 with accepted, duplicatesSkipped and rejected
+POST {{baseUrl}}/api/shipments/{{tracking}}/scans
+Content-Type: application/json
+
+{
+  "scans": [
+    { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301", "scanType": "Pickup", "courierId": "CR-1001", "location": "Sydney depot", "scannedAtUtc": "{{$datetime iso8601}}", "notes": "Fictional pickup" },
+    { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3302", "scanType": "InTransit", "courierId": "CR-1001", "location": "Sydney hub", "scannedAtUtc": "{{$datetime iso8601}}" }
+  ]
+}
+
+### Upload the same scans again: 200, both counted as duplicatesSkipped
+POST {{baseUrl}}/api/shipments/{{tracking}}/scans
+Content-Type: application/json
+
+{
+  "scans": [
+    { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3301", "scanType": "Pickup", "courierId": "CR-1001", "location": "Sydney depot", "scannedAtUtc": "{{$datetime iso8601}}", "notes": "Fictional pickup" },
+    { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3302", "scanType": "InTransit", "courierId": "CR-1001", "location": "Sydney hub", "scannedAtUtc": "{{$datetime iso8601}}" }
+  ]
+}
+
+### Upload scans: 400, a Delivered scan needs a signature and a scan cannot be in the future
+POST {{baseUrl}}/api/shipments/{{tracking}}/scans
+Content-Type: application/json
+
+{
+  "scans": [
+    { "scanId": "scan::3f2504e0-4f89-41d3-9a0c-0305e82c3303", "scanType": "Delivered", "courierId": "CR-1001", "location": "Front door", "scannedAtUtc": "2099-01-01T00:00:00Z" }
+  ]
+}
+
+### Scan history: 200, oldest first
+GET {{baseUrl}}/api/shipments/{{tracking}}/scans
+
+### Scan history: 404, unknown tracking number
+GET {{baseUrl}}/api/shipments/APX-99999999/scans
+
+### Delete: 409, only a Created shipment can be deleted (this one is PickedUp now)
+DELETE {{baseUrl}}/api/shipments/{{tracking}}
+
+### Delete: 204, a seeded shipment that is still Created (APX-10000005)
+DELETE {{baseUrl}}/api/shipments/APX-10000005
+
+### Delete: 404, unknown tracking number
+DELETE {{baseUrl}}/api/shipments/APX-99999999
