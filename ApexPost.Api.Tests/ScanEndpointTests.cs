@@ -8,7 +8,7 @@ namespace ApexPost.Api.Tests;
 
 public sealed class ScanEndpointTests : IDisposable
 {
-    private const string Scans = "/api/shipments/APX-10000001/scans";
+    private const string Scans = "/api/v2/shipments/APX-10000001/scans";
     private readonly ApiFactory _factory = new();
     private readonly HttpClient _client;
 
@@ -105,7 +105,7 @@ public sealed class ScanEndpointTests : IDisposable
     [Fact]
     public async Task Uploading_to_an_unknown_shipment_returns_404()
     {
-        var response = await _client.PostAsJsonAsync("/api/shipments/APX-99999999/scans", new { scans = new[] { Scan() } });
+        var response = await _client.PostAsJsonAsync("/api/v2/shipments/APX-99999999/scans", new { scans = new[] { Scan() } });
 
         await ReadProblem(response, HttpStatusCode.NotFound);
     }
@@ -121,7 +121,7 @@ public sealed class ScanEndpointTests : IDisposable
 
         Assert.Equal([earlier["scanId"], later["scanId"]], history.EnumerateArray().Select(scan => (object?)scan.GetProperty("scanId").GetString()));
         Assert.Equal("Pickup", history[0].GetProperty("scanType").GetString());
-        await ReadProblem(await _client.GetAsync("/api/shipments/APX-99999999/scans"), HttpStatusCode.NotFound);
+        await ReadProblem(await _client.GetAsync("/api/v2/shipments/APX-99999999/scans"), HttpStatusCode.NotFound);
     }
 
     private static (int Accepted, int Duplicates, int Rejected) Counts(JsonElement body) =>

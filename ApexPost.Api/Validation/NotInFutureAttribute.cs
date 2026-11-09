@@ -10,6 +10,7 @@ namespace ApexPost.Api.Validation;
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
 public sealed class NotInFutureAttribute() : ValidationAttribute("The {0} field cannot be in the future.")
 {
+    /// <inheritdoc />
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
         if (value is not DateTimeOffset time)

@@ -11,12 +11,16 @@ namespace ApexPost.Api.Validation;
 public sealed partial class PhoneNumberAttribute()
     : ValidationAttribute("The {0} field must be a phone number of 8 to 15 digits, such as +61 2 5550 1234.")
 {
+    /// <summary>The fewest digits a phone number may have.</summary>
     public const int MinimumDigits = 8;
+
+    /// <summary>The most digits a phone number may have, the E.164 limit.</summary>
     public const int MaximumDigits = 15;
 
     [GeneratedRegex(@"^\+?(?:[0-9]+|\([0-9]+\))(?:[ -]?(?:[0-9]+|\([0-9]+\)))*$", RegexOptions.CultureInvariant)]
     private static partial Regex Shape();
 
+    /// <inheritdoc />
     public override bool IsValid(object? value)
     {
         if (value is null)

@@ -9,6 +9,7 @@ namespace ApexPost.Api.Contracts;
 /// <summary>A batch of scans a courier device recorded offline (Part A) and now uploads.</summary>
 public sealed class ScanUploadRequest
 {
+    /// <summary>The most scans one request may carry.</summary>
     public const int MaximumScans = 100;
 
     /// <summary>The scans, 1 to 100 per request.</summary>

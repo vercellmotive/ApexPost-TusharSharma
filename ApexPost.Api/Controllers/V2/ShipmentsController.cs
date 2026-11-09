@@ -1,99 +1,113 @@
 using ApexPost.Api.Contracts;
+using ApexPost.Api.Contracts.V2;
 using ApexPost.Api.Errors;
 using ApexPost.Tracking.Application;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ApexPost.Api.Controllers;
+namespace ApexPost.Api.Controllers.V2;
 
-/// <summary>Shipments, found by their tracking number. Each action binds input, calls the service and returns a result.</summary>
+/// <summary>
+/// Version 2 of the shipment endpoints. The routes, requests and rules are those of version 1. Only the response
+/// changes: the recipient is a nested object, the latest scan is included and the status is a string.
+/// </summary>
 [ApiController]
-[Route("api/shipments")]
+[ApiVersion(2.0)]
+[Route("api/v{version:apiVersion}/shipments")]
+[Tags("Shipments")]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class ShipmentsController(IShipmentService shipments) : ControllerBase
 {
-    /// <summary>Lists shipments, newest first, a page at a time.</summary>
+    /// <summary>List shipments.</summary>
+    /// <remarks>Lists shipments, newest first, a page at a time.</remarks>
     /// <param name="query">Paging and optional status and city filters.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
+    [EndpointSummary("List shipments")]
     [HttpGet(Name = "ListShipments")]
-    [ProducesResponseType<PagedResponse<ShipmentResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<PagedResponse<Contracts.V2.ShipmentResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
-    public async Task<ActionResult<PagedResponse<ShipmentResponse>>> List([FromQuery] ShipmentListQuery query, CancellationToken ct)
+    public async Task<ActionResult<PagedResponse<Contracts.V2.ShipmentResponse>>> List([FromQuery] ShipmentListQuery query, CancellationToken ct)
     {
         var page = await shipments.ListAsync(query.ToQuery(), ct);
-        return Ok(page.ToResponse(view => view.ToResponse()));
+        return Ok(page.ToResponse(view => view.ToResponseV2()));
     }
 
-    /// <summary>Gets one shipment.</summary>
+    /// <summary>Get a shipment.</summary>
+    /// <remarks>Gets one shipment.</remarks>
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
+    [EndpointSummary("Get a shipment")]
     [HttpGet("{trackingNumber:trackingNumber}", Name = "GetShipment")]
-    [ProducesResponseType<ShipmentResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Contracts.V2.ShipmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
-    public async Task<ActionResult<ShipmentResponse>> Get(string trackingNumber, CancellationToken ct)
+    public async Task<ActionResult<Contracts.V2.ShipmentResponse>> Get(string trackingNumber, CancellationToken ct)
     {
         var result = await shipments.GetAsync(trackingNumber, ct);
-        return result.Succeeded ? Ok(result.Value.ToResponse()) : this.ToProblem(result.Error);
+        return result.Succeeded ? Ok(result.Value.ToResponseV2()) : this.ToProblem(result.Error);
     }
 
-    /// <summary>Creates a shipment in Created status.</summary>
+    /// <summary>Create a shipment.</summary>
+    /// <remarks>Creates a shipment in Created status.</remarks>
     /// <param name="request">The tracking number, origin branch, recipient and weight.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
     /// <response code="201">The shipment was created. The Location header is its URL.</response>
     /// <response code="409">A shipment with this tracking number already exists.</response>
+    [EndpointSummary("Create a shipment")]
     [HttpPost(Name = "CreateShipment")]
     [Consumes("application/json")]
-    [ProducesResponseType<ShipmentResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Contracts.V2.ShipmentResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
-    public async Task<ActionResult<ShipmentResponse>> Create(CreateShipmentRequest request, CancellationToken ct)
+    public async Task<ActionResult<Contracts.V2.ShipmentResponse>> Create(CreateShipmentRequest request, CancellationToken ct)
     {
         var result = await shipments.CreateAsync(request.ToNewShipment(), ct);
         return result.Succeeded
-            ? CreatedAtRoute("GetShipment", new { trackingNumber = result.Value.TrackingNumber }, result.Value.ToResponse())
+            ? CreatedAtRoute("GetShipment", new { trackingNumber = result.Value.TrackingNumber }, result.Value.ToResponseV2())
             : this.ToProblem(result.Error);
     }
 
-    /// <summary>Replaces the recipient details and weight of a shipment.</summary>
+    /// <summary>Replace shipment details.</summary>
+    /// <remarks>Replaces the recipient details and weight of a shipment.</remarks>
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
     /// <param name="request">The new details. Every field is replaced.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
     /// <response code="409">The shipment is Delivered or Failed, or another request changed it first.</response>
+    [EndpointSummary("Replace shipment details")]
     [HttpPut("{trackingNumber:trackingNumber}", Name = "UpdateShipment")]
     [Consumes("application/json")]
-    [ProducesResponseType<ShipmentResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Contracts.V2.ShipmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
-    public async Task<ActionResult<ShipmentResponse>> Update(string trackingNumber, UpdateShipmentRequest request, CancellationToken ct)
+    public async Task<ActionResult<Contracts.V2.ShipmentResponse>> Update(string trackingNumber, UpdateShipmentRequest request, CancellationToken ct)
     {
         var result = await shipments.ReplaceDetailsAsync(trackingNumber, request.ToDetails(), ct);
-        return result.Succeeded ? Ok(result.Value.ToResponse()) : this.ToProblem(result.Error);
+        return result.Succeeded ? Ok(result.Value.ToResponseV2()) : this.ToProblem(result.Error);
     }
 
-    /// <summary>Changes only the status of a shipment.</summary>
+    /// <summary>Change shipment status.</summary>
+    /// <remarks>Changes only the status of a shipment.</remarks>
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
     /// <param name="request">The next status.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
     /// <response code="409">The move is not allowed from the current status, or another request changed the shipment first.</response>
+    [EndpointSummary("Change shipment status")]
     [HttpPatch("{trackingNumber:trackingNumber}/status", Name = "UpdateShipmentStatus")]
     [Consumes("application/json")]
-    [ProducesResponseType<ShipmentResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Contracts.V2.ShipmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
-    public async Task<ActionResult<ShipmentResponse>> UpdateStatus(string trackingNumber, UpdateStatusRequest request, CancellationToken ct)
+    public async Task<ActionResult<Contracts.V2.ShipmentResponse>> UpdateStatus(string trackingNumber, UpdateStatusRequest request, CancellationToken ct)
     {
         var result = await shipments.ChangeStatusAsync(trackingNumber, request.Status!.Value, ct);
-        return result.Succeeded ? Ok(result.Value.ToResponse()) : this.ToProblem(result.Error);
+        return result.Succeeded ? Ok(result.Value.ToResponseV2()) : this.ToProblem(result.Error);
     }
 
-    /// <summary>Deletes a shipment that is still in Created status.</summary>
+    /// <summary>Delete a shipment.</summary>
+    /// <remarks>Deletes a shipment that is still in Created status.</remarks>
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
     /// <response code="204">The shipment and its scans were deleted.</response>
     /// <response code="409">The shipment has moved past Created.</response>
+    [EndpointSummary("Delete a shipment")]
     [HttpDelete("{trackingNumber:trackingNumber}", Name = "DeleteShipment")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]

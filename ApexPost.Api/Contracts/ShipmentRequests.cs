@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using ApexPost.Api.Validation;
@@ -78,21 +79,25 @@ public sealed class ShipmentListQuery
 {
     /// <summary>Page number, starting at 1.</summary>
     [FromQuery(Name = "page")]
+    [Description("Page number, starting at 1.")]
     [Range(1, 100_000)]
     public int Page { get; init; } = 1;
 
     /// <summary>Shipments per page, from 1 to 50. The default is 20.</summary>
     [FromQuery(Name = "pageSize")]
+    [Description("Shipments per page, from 1 to 50. The default is 20.")]
     [Range(1, Tracking.Application.ShipmentQuery.MaximumPageSize)]
     public int PageSize { get; init; } = Tracking.Application.ShipmentQuery.DefaultPageSize;
 
     /// <summary>Only shipments in this status.</summary>
     [FromQuery(Name = "status")]
+    [Description("Only shipments in this status.")]
     [EnumDataType(typeof(ShipmentStatus))]
     public ShipmentStatus? Status { get; init; }
 
     /// <summary>Only shipments to this city. Case does not matter.</summary>
     [FromQuery(Name = "city")]
+    [Description("Only shipments to this city. Case does not matter.")]
     [StringLength(100)]
     public string? City { get; init; }
 }

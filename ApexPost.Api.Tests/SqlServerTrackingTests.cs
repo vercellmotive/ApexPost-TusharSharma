@@ -209,12 +209,12 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         var client = factory.CreateClient();
         var trackingNumber = NextTrackingNumber();
 
-        var created = await client.PostAsJsonAsync("/api/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));
+        var created = await client.PostAsJsonAsync("/api/v2/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));
         var batch = new { scans = new[] { new { scanId = Make.NewScanId(), scanType = "Pickup", courierId = "CR-1001", location = "Depot", scannedAtUtc = _clock.Now } } };
-        var first = await client.PostAsJsonAsync($"/api/shipments/{trackingNumber}/scans", batch);
-        var again = await client.PostAsJsonAsync($"/api/shipments/{trackingNumber}/scans", batch);
-        var history = await client.GetFromJsonAsync<JsonElement>($"/api/shipments/{trackingNumber}/scans");
-        var duplicate = await client.PostAsJsonAsync("/api/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));
+        var first = await client.PostAsJsonAsync($"/api/v2/shipments/{trackingNumber}/scans", batch);
+        var again = await client.PostAsJsonAsync($"/api/v2/shipments/{trackingNumber}/scans", batch);
+        var history = await client.GetFromJsonAsync<JsonElement>($"/api/v2/shipments/{trackingNumber}/scans");
+        var duplicate = await client.PostAsJsonAsync("/api/v2/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));
 
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         Assert.Equal(1, (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accepted").GetInt32());

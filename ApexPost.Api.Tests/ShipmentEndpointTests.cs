@@ -8,7 +8,7 @@ namespace ApexPost.Api.Tests;
 
 public sealed class ShipmentEndpointTests : IDisposable
 {
-    private const string Shipments = "/api/shipments";
+    private const string Shipments = "/api/v1/shipments";
     private readonly ApiFactory _factory = new();
     private readonly HttpClient _client;
 
@@ -33,7 +33,7 @@ public sealed class ShipmentEndpointTests : IDisposable
         var response = await _client.PostAsJsonAsync(Shipments, NewShipment());
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.Equal("/api/shipments/APX-20000001", response.Headers.Location?.AbsolutePath);
+        Assert.Equal("/api/v1/shipments/APX-20000001", response.Headers.Location?.AbsolutePath);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("APX-20000001", body.GetProperty("trackingNumber").GetString());
         Assert.Equal(0, body.GetProperty("status").GetInt32());
