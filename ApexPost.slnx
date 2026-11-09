@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="ApexPost.Api.Tests/ApexPost.Api.Tests.csproj" />
   <Project Path="ApexPost.Api/ApexPost.Api.csproj" />
   <Project Path="ApexPost.Application/ApexPost.Application.csproj" Id="4a52217c-2061-4383-9dc9-0f251654b342" />
   <Project Path="ApexPost.Courier.Offline.Harness/ApexPost.Courier.Offline.Harness.csproj" Id="5b1c3f0e-6d2a-4c58-9a47-1e0f6a8b7c21" />
