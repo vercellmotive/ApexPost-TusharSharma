@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ApexPost.Api.Security;
 using ApexPost.Tracking.Domain;
+using Microsoft.AspNetCore.Hosting;
 using static ApexPost.Api.Tests.ShipmentEndpointTests;
 
 namespace ApexPost.Api.Tests;
@@ -197,6 +198,111 @@ public sealed class SecurityTests : IDisposable
         var response = await client.GetAsync("/api/v2/shipments");
 
         Assert.Equal(expected, response.Headers.Contains("Strict-Transport-Security"));
+    }
+
+    [Theory]
+    [InlineData(29)]
+    [InlineData(60)]
+    [InlineData(100_000)]
+    public async Task A_long_phone_number_ending_in_a_bad_character_is_refused_quickly(int digits)
+    {
+        var request = JsonSerializer.SerializeToNode(NewShipment(), JsonSerializerOptions.Web)!;
+        request["recipientPhone"] = new string('1', digits) + "x";
+        var client = _factory.CreateClient();
+        var started = System.Diagnostics.Stopwatch.StartNew();
+
+        var response = await client.PostAsJsonAsync("/api/v2/shipments", request);
+
+        started.Stop();
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(2), $"Took {started.Elapsed}: the phone check must not backtrack.");
+    }
+
+    [Fact]
+    public void The_phone_pattern_matches_in_linear_time_even_without_the_length_guard()
+    {
+        var attribute = new ApexPost.Api.Validation.PhoneNumberAttribute();
+        var started = System.Diagnostics.Stopwatch.StartNew();
+
+        Assert.False(attribute.IsValid(new string('1', 20) + "x"));
+        Assert.False(attribute.IsValid(new string('1', 5000) + "x"));
+        Assert.True(attribute.IsValid("+61 2 5550 1234"));
+
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task Development_tokens_need_the_explicit_setting_as_well_as_the_environment()
+    {
+        using var development = new ApiFactory("Development");
+        var off = development.WithWebHostBuilder(builder => builder.UseSetting(ApexPost.Api.Security.DevelopmentTokens.AllowSetting, "false"));
+
+        var withSetting = await development.CreateAnonymousClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
+        var withoutSetting = await off.CreateClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
+
+        Assert.Equal(HttpStatusCode.OK, withSetting.StatusCode);
+        await AssertNoTokenIssuedAsync(withoutSetting);
+    }
+
+    [Fact]
+    public async Task Production_never_issues_tokens_even_with_the_setting_on()
+    {
+        using var production = new ApiFactory("Production");
+        var on = production.WithWebHostBuilder(builder => builder.UseSetting(ApexPost.Api.Security.DevelopmentTokens.AllowSetting, "true"));
+
+        var response = await on.CreateClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
+
+        await AssertNoTokenIssuedAsync(response);
+    }
+
+    // The route does not exist, so an anonymous caller gets the same 401 as for any other path and learns nothing.
+    private static async Task AssertNoTokenIssuedAsync(HttpResponseMessage response)
+    {
+        Assert.True(response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.NotFound);
+        Assert.DoesNotContain("accessToken", await response.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", true)]
+    [InlineData("::1", true)]
+    [InlineData("203.0.113.9", false)]
+    [InlineData("10.0.2.15", false)]
+    public void Only_a_caller_on_the_same_machine_gets_a_development_token(string address, bool expected) =>
+        Assert.Equal(expected, ApexPost.Api.Security.DevelopmentTokens.IsLocalCaller(System.Net.IPAddress.Parse(address)));
+
+    [Fact]
+    public async Task The_partner_route_is_rate_limited_and_answers_429_problem_details_with_retry_after()
+    {
+        using var factory = new ApiFactory();
+        var limited = factory.WithWebHostBuilder(builder => builder.UseSetting("RateLimiting:PartnerPerMinute", "3"));
+        var client = limited.CreateClient();
+        HttpResponseMessage Request()
+        {
+            var message = new HttpRequestMessage(HttpMethod.Get, "/api/v2/partner/shipments/APX-10000001");
+            message.Headers.Add("X-Api-Key", "wrong-key-0123456789abcdef0123456789");
+            return client.SendAsync(message).GetAwaiter().GetResult();
+        }
+
+        var first = new[] { Request(), Request(), Request() };
+        var fourth = Request();
+
+        Assert.All(first, response => Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode));
+        await ReadProblem(fourth, HttpStatusCode.TooManyRequests);
+        Assert.True(fourth.Headers.Contains("Retry-After"));
+    }
+
+    [Fact]
+    public async Task The_general_limit_also_applies()
+    {
+        using var factory = new ApiFactory();
+        var limited = factory.WithWebHostBuilder(builder => builder.UseSetting("RateLimiting:GeneralPerMinute", "2"));
+        var client = limited.CreateClient();
+
+        await client.GetAsync("/api/v2/shipments");
+        await client.GetAsync("/api/v2/shipments");
+        var third = await client.GetAsync("/api/v2/shipments");
+
+        await ReadProblem(third, HttpStatusCode.TooManyRequests);
     }
 
     [Fact]

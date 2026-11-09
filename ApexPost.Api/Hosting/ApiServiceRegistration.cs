@@ -11,7 +11,7 @@ namespace ApexPost.Api.Hosting;
 
 internal static class ApiServiceRegistration
 {
-    public static IServiceCollection AddApexPostApi(this IServiceCollection services)
+    public static IServiceCollection AddApexPostApi(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers(options =>
             {
@@ -38,6 +38,7 @@ internal static class ApiServiceRegistration
             options.ConstraintMap.Add(TrackingNumberRouteConstraint.Name, typeof(TrackingNumberRouteConstraint)));
 
         services.AddApexPostSecurity();
+        services.AddApexPostRateLimiting(configuration);
         services.AddApexPostVersioning();
         services.AddApexPostOpenApi();
         services.AddProblemDetails();

@@ -224,6 +224,46 @@ public sealed class ShipmentServiceTests
         Assert.Equal(TestClock.Start.AddMinutes(40), view.LatestScan?.ScannedAtUtc);
     }
 
+    [Theory]
+    [InlineData(ScanType.Delivered, ShipmentStatus.Delivered)]
+    [InlineData(ScanType.Failed, ShipmentStatus.Failed)]
+    public async Task A_delivered_or_failed_scan_closes_a_shipment_that_is_out_for_delivery(ScanType scanType, ShipmentStatus expected)
+    {
+        _store.Seed(Make.ShipmentIn(ShipmentStatus.OutForDelivery));
+
+        var result = await _service.UploadScansAsync("APX-10000001", [Make.Scan(type: scanType, signature: "Mia Fictional")], Make.CourierId);
+
+        Assert.Equal(1, result.Value!.Accepted);
+        Assert.Equal(expected, (await _service.GetAsync("APX-10000001")).Value!.Status);
+    }
+
+    [Theory]
+    [InlineData(ShipmentStatus.Created)]
+    [InlineData(ShipmentStatus.PickedUp)]
+    [InlineData(ShipmentStatus.InTransit)]
+    public async Task A_delivered_scan_earlier_in_the_journey_leaves_the_status_for_the_courier_to_move(ShipmentStatus status)
+    {
+        _store.Seed(Make.ShipmentIn(status));
+
+        await _service.UploadScansAsync("APX-10000001", [Make.Scan(type: ScanType.Delivered, signature: "Mia Fictional")], Make.CourierId);
+
+        Assert.Equal(status, (await _service.GetAsync("APX-10000001")).Value!.Status);
+    }
+
+    [Fact]
+    public async Task Other_scan_types_do_not_change_the_status_and_a_lost_race_is_not_an_error()
+    {
+        _store.Seed(Make.ShipmentIn(ShipmentStatus.OutForDelivery));
+        var transit = await _service.UploadScansAsync("APX-10000001", [Make.Scan(type: ScanType.InTransit)], Make.CourierId);
+        Assert.Equal(ShipmentStatus.OutForDelivery, (await _service.GetAsync("APX-10000001")).Value!.Status);
+        Assert.Equal(1, transit.Value!.Accepted);
+
+        _store.FailNextSave = new ConcurrencyConflictException("Another request moved it.");
+        var delivered = await _service.UploadScansAsync("APX-10000001", [Make.Scan(type: ScanType.Delivered, signature: "Mia Fictional")], Make.CourierId);
+
+        Assert.Equal(1, delivered.Value!.Accepted);
+    }
+
     [Fact]
     public async Task List_refuses_a_page_size_above_the_maximum()
     {

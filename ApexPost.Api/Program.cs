@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Rewrite;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddApexPostApi();
+builder.Services.AddApexPostApi(builder.Configuration);
 
 var app = builder.Build();
 
@@ -37,6 +37,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Before authentication, so a flood of bad tokens or keys is turned away cheaply.
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

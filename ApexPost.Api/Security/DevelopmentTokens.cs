@@ -17,14 +17,17 @@ public sealed record DevelopmentTokenRequest(IReadOnlyList<string>? Roles, strin
 public sealed record DevelopmentTokenResponse(string AccessToken, string TokenType, DateTimeOffset ExpiresAtUtc);
 
 /// <summary>
-/// POST /dev/token issues short-lived tokens for testing, signed with the same key the API validates with. It is
-/// mapped only in Development, and is not in the OpenAPI documents. A real identity provider replaces it; see SECURITY.md.
+/// POST /dev/token issues short-lived tokens for testing, signed with the same key the API validates with. Three
+/// separate guards must all hold, so one wrong setting does not hand out Admin tokens: the environment must be
+/// Development, <c>Jwt:AllowDevelopmentTokens</c> must be true (it is set only in appsettings.Development.json), and
+/// the caller must be on the same machine. It is not in the OpenAPI documents. A real identity provider replaces
+/// it; see SECURITY.md.
 /// </summary>
 internal static class DevelopmentTokens
 {
     public static void MapDevelopmentTokens(this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment() || !app.Configuration.GetValue<bool>(AllowSetting))
         {
             return;
         }
@@ -32,8 +35,20 @@ internal static class DevelopmentTokens
         app.MapPost("/dev/token", Issue).AllowAnonymous().ExcludeFromDescription();
     }
 
-    internal static IResult Issue(DevelopmentTokenRequest request, IOptions<JwtOptions> options)
+    /// <summary>The configuration switch that turns the endpoint on. Off unless a developer's own settings say so.</summary>
+    public const string AllowSetting = "Jwt:AllowDevelopmentTokens";
+
+    /// <summary>Kestrel always sets the caller's address. A test host has none, and is in the same process.</summary>
+    internal static bool IsLocalCaller(System.Net.IPAddress? address) => address is null || System.Net.IPAddress.IsLoopback(address);
+
+    internal static IResult Issue(HttpContext httpContext, DevelopmentTokenRequest request, IOptions<JwtOptions> options)
     {
+        if (!IsLocalCaller(httpContext.Connection.RemoteIpAddress))
+        {
+            // Not a developer's own machine: behave as if the route did not exist.
+            return TypedResults.NotFound();
+        }
+
         var roles = request.Roles ?? [];
         var errors = new Dictionary<string, string[]>();
         if (roles.Count == 0 || roles.Any(role => !ApexPostRoles.All.Contains(role)))
