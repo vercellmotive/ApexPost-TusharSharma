@@ -64,7 +64,7 @@ dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --sta
 dotnet test ApexPost.slnx
 ```
 
-This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), the Week 4 project `ApexPost.Courier.Offline.Tests` (95 tests that use an embedded database and need no server), and `ApexPost.Api.Tests` (102 tests with no database, and 8 more reported as skipped). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
+This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), and the Week 4 projects `ApexPost.Courier.Offline.Tests` (96 tests that use an embedded database and need no server), `ApexPost.Api.Tests` (125 tests with no database, and 8 more reported as skipped) and `ApexPost.Courier.Core.Tests` (53 tests). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
 
 ```bash
 APEXPOST_TEST_SQLSERVER="Server=localhost;User Id=<user>;Password=<password>;TrustServerCertificate=True" dotnet test ApexPost.slnx
@@ -332,6 +332,49 @@ It calls `https://localhost:7180`, so the development certificate must be truste
 
 Screenshots of Swagger UI for both versions and of the 201, 400 and 409 responses are in [`docs/week4-partC`](docs/week4-partC).
 
+## Week 4 Part D: security and the courier app
+
+### Securing the API
+
+The API needs a JWT bearer token for every shipment and scan route, with roles for writes, and the read-only partner route takes an `X-Api-Key` header instead. The design, the OAuth 2.0 flows and the HTTPS/HSTS reasoning are in [`SECURITY.md`](SECURITY.md). Before you run the API, set the two secrets. Neither is in source control:
+
+```bash
+dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 32)" --project ApexPost.Api
+```
+
+```bash
+dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" "$(openssl rand -hex 24)" --project ApexPost.Api
+```
+
+In Development, `POST /dev/token` issues a test token, for example `{"roles":["Courier"],"courierId":"CR-1001"}`. In Swagger UI, paste it into **Authorize**. [`ApexPost.Api/ApexPost.Api.http`](ApexPost.Api/ApexPost.Api.http) starts by requesting tokens, and ends with the 401, 403, invalid API key and valid token cases.
+
+### The courier app
+
+`ApexPost.Courier` is a .NET MAUI app with four screens: Login, New Scan, Pending Scans and Sync Status. Its logic is in `ApexPost.Courier.Core`, which needs no MAUI workload and is tested by `ApexPost.Courier.Core.Tests`:
+
+| Part | Where |
+|---|---|
+| Typed client `ApexApiClient`, registered with `AddHttpClient<ApexApiClient>()` | `ApexPost.Courier.Core/Api`, `ApexPost.Courier/MauiProgram.cs` |
+| `AuthHeaderHandler` (bearer token from SecureStorage, sign-out on 401) | `ApexPost.Courier.Core/Auth` |
+| Retry, circuit breaker and timeouts with logging | `ApexPost.Courier.Core/Resilience`, explained in [`RESILIENCE.md`](RESILIENCE.md) |
+| Source-generated `ApexJsonContext` and shared JSON options | `ApexPost.Courier.Core/Api/ApiDtos.cs` |
+| Batch sync of Pending scans (20 at a time) on reconnect, and the real uploader that replaces the Part A fake | `ApexPost.Courier.Core/Sync` |
+| SecureStorage, Connectivity, pages and the `#if DEBUG` development certificate handler | `ApexPost.Courier` |
+
+The app needs the MAUI workload, so it is in its own solution, `ApexPost.Mobile.slnx`:
+
+```bash
+dotnet workload install maui-android
+```
+
+```bash
+dotnet build ApexPost.Courier -f net10.0-android -p:CourierPlatforms=net10.0-android
+```
+
+The API base URLs are in `ApexPost.Courier/appsettings.json`: `https://10.0.2.2:7180` on the Android emulator and `https://localhost:7180` on Windows and elsewhere. Start the API with the `https` profile first.
+
+`CourierAppEndToEndTests` in `ApexPost.Api.Tests` runs the app's view models, client, handlers, resilience pipeline and Couchbase Lite store against the real API pipeline. It covers login, 25 scans saved offline, the automatic upload on reconnect, a resent scan stored only once, a refused scan marked Failed, and another courier's token refused.
+
 ## Solution layout
 
 - `ApexPost.Domain`: entities, rules, events, enums, value objects. It references nothing.
@@ -348,5 +391,8 @@ Screenshots of Swagger UI for both versions and of the 201, 400 and 409 response
 - `ApexPost.Api.Tests`: domain, service, HTTP, versioning, contract and SDK tests, and SQL Server tests that run when `APEXPOST_TEST_SQLSERVER` is set.
 - `ApexPost.Client`: the NSwag-generated v2 client, with its hand-written partial class and extensions.
 - `ApexPost.Client.Consumer`: the console program that uses it.
+- `ApexPost.Courier.Core`: Week 4 Part D, the courier app's logic: typed API client, handlers, resilience, JSON, sync and view models.
+- `ApexPost.Courier.Core.Tests`: its tests.
+- `ApexPost.Courier`: the .NET MAUI courier app (in `ApexPost.Mobile.slnx`, because it needs the MAUI workload).
 
 See `DESIGN.md` for the architecture and ER diagrams, middleware sequence, filters, ADRs and security decisions, and `PERFORMANCE.md` for index evidence.
