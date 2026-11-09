@@ -39,11 +39,16 @@ So if the reply to an upload is lost and the pipeline, or the next sync run, sen
 |---|---|---|
 | Device offline (`Connectivity` says no internet) | No call is made | Saved locally as Pending. The banner shows. |
 | Network error or 5xx, retries exhausted | `ApiFailureKind.Unreachable` or `ServerError` | Stay Pending. This sync run stops and the next one tries again. |
+| A reply the app cannot read (a captive-portal page on public Wi-Fi answers 200 with HTML) | `ApiFailureKind.Malformed`, treated like a network failure | Stay Pending. The run stops, and the scans go up when the network is real. |
 | Circuit open | `ApiFailureKind.CircuitOpen`, at once | Stay Pending. The banner "Server unavailable – working offline" shows on every tab. |
 | 401 | Token cleared, Login page | Stay Pending until the courier signs in again. |
-| 400, 403, 404 | `ApiFailureKind.Rejected` with the ProblemDetails message | Marked Failed, with the reason on the Sync Status screen. |
+| 400, 403, 404 | `ApiFailureKind.Rejected` with the ProblemDetails message | Marked Failed, with the reason on the Sync Status screen. "Retry failed scans" on that screen moves them back to Pending and sends them again, for example after a back-office user creates the missing shipment. |
 | 200 with rejections | Per scan | Rejected scans Failed with the server's reason. Accepted and duplicate scans Synced. |
 | Back online (`Connectivity.ConnectivityChanged`) | `ScanSyncService` starts a run | Pending scans go up in batches of 20, oldest first. |
+
+## Edits and deletes while an upload runs
+
+After the server accepts a scan, `ScanSyncService` reads the scan again before marking it Synced. If it was edited meanwhile it stays Pending, so the edit is sent too (the server skips the id it already has, so a correction needs a new scan, which is the courier's call). If it was deleted, it stays deleted. The Part A `OutboxService` has the same rule for failures that may pass: an uploader that throws `TransientUploadException` leaves the scan Pending and stops the run, instead of marking it Failed.
 
 ## Logging
 

@@ -1,9 +1,9 @@
-2026-11-2 05:53:47.683+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+2026-11-9 01:06:15.050+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
 1. All scans for a tracking number
-   SQL++ : SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus FROM _ WHERE trackingNumber = $trackingNumber ORDER BY scannedAtUtc, META().id
+   SQL++ : SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus, recipientSignatureName FROM _ WHERE trackingNumber = $trackingNumber ORDER BY scannedAtUtc, META().id
    Plan  : SEARCH _ USING INDEX idx_trackingNumber (<expr>=?) ; USE TEMP B-TREE FOR ORDER BY
 2. All scans where syncStatus = Pending
-   SQL++ : SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus FROM _ WHERE syncStatus = $syncStatus ORDER BY scannedAtUtc, META().id
+   SQL++ : SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus, recipientSignatureName FROM _ WHERE syncStatus = $syncStatus ORDER BY scannedAtUtc, META().id
    Plan  : SEARCH _ USING INDEX idx_syncStatus (<expr>=?) ; USE TEMP B-TREE FOR ORDER BY
 3. Number of scans per scanType for one courier
    SQL++ : SELECT scanType, COUNT(*) AS total FROM _ WHERE courierId = $courierId GROUP BY scanType

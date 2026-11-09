@@ -49,6 +49,14 @@ The scan id from the courier device is the primary key of `tracking.Scans`. An u
 
 If two uploads of the same scans race, the primary key refuses the second insert. The store then inserts that batch one scan at a time and counts the ones that were already there as duplicates. A test runs four uploads of one batch in parallel against SQL Server and finds each scan stored once.
 
+## Scans and the shipment's status
+
+A scan upload does not move a shipment along the status path, which is the job of `PATCH .../status`, with one exception: a Delivered or Failed scan closes a shipment that is `OutForDelivery`, moving it to Delivered or Failed, so the status and the scan history agree. A scan that arrives earlier in the journey changes nothing. If another request moved the shipment first, that change stands and the scans are still stored.
+
+## Rate limits
+
+429 ProblemDetails with `Retry-After` when a caller sends more than 600 requests a minute to any endpoint, or more than 30 to the partner route. See [`SECURITY.md`](SECURITY.md).
+
 ## Design
 
 - **Thin controllers.** Each action binds a request DTO, maps it to a service command, calls `IShipmentService` and maps the result. The service returns `ServiceResult<T>`, and `ServiceErrorResults` turns a NotFound, Conflict or Validation error into ProblemDetails. Request DTOs are never bound to EF entities.

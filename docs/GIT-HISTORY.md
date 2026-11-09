@@ -1,6 +1,6 @@
 # Git history
 
-Repository: <https://github.com/vercellmotive/ApexPost>. A zip leaves out `.git`, so this snapshot shows how the work was done, up to PR #15. It can't list the commit that updates it, so GitHub is the full record.
+Repository: <https://github.com/vercellmotive/ApexPost-TusharSharma> (earlier pull requests were opened as `vercellmotive/ApexPost`, and the old address redirects, so their links still work). A zip leaves out `.git`, so this snapshot shows how the work was done: Weeks 2 and 3 up to PR #15, and Week 4 in the last section. It can't list the commit that updates it, so GitHub is the full record.
 
 ## Pull requests
 
@@ -68,6 +68,56 @@ Repository: <https://github.com/vercellmotive/ApexPost>. A zip leaves out `.git`
 | `1af8f10` | 2026-11-01 | fix: answer 400 when a form is shown again, and reject a price change that rounds to zero |
 | `61d4a84` | 2026-11-01 | feat: require positive payments, unicode role names, and drop a redundant index |
 | `8da478b` | 2026-11-01 | docs: measure the stock history index |
+
+## Week 4: branches and pull requests
+
+The four parts are chained: each branch starts from the one before it, so merge them in order, A, B, C, D. The pull requests below are open until they are merged on GitHub, and the pull request page is the record of when. The commits are listed as they stood when this file was written (the review fixes for Part D are on `week4-partD` after them).
+
+| PR | Branch | Part |
+|---|---|---|
+| [#17](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/17) | `week4-partA` | Part A: the courier offline store |
+| [#18](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/18) | `week4-partB` | Part B: the shipment REST API |
+| [#19](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/19) | `week4-partC` | Part C: OpenAPI, versioning and the client SDK |
+| [#20](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/20) | `week4-partD` | Part D: security and the courier app |
+
+### Part A: the courier offline store (`week4-partA`)
+
+| Commit | Date | Message |
+|---|---|---|
+| `aa772af` | 2026-11-02 | feat(courier): add the offline library with the scan model, database, indexes and change listener |
+| `8a7c350` | 2026-11-02 | feat(courier): add the scan repository with key-value CRUD and parameterised SQL++ |
+| `6d4e93d` | 2026-11-02 | feat(courier): add the outbox service and a fake uploader |
+| `e6585ff` | 2026-11-02 | feat(courier): add the console test harness |
+| `c5f0ee9` | 2026-11-02 | test(courier): add tests for the offline library and the harness |
+| `07af09c` | 2026-11-02 | docs(courier): add the design note, README section and evidence |
+
+### Part B: the shipment REST API (`week4-partB`)
+
+| Commit | Date | Message |
+|---|---|---|
+| `c6262e3` | 2026-11-09 | feat(tracking): add the shipment and scan domain and the shipment service |
+| `39fe7d0` | 2026-11-09 | feat(tracking): add the tracking schema, migration and EF Core store |
+| `510677a` | 2026-11-09 | feat(api): add the shipment REST API |
+| `8d248d7` | 2026-11-09 | test(api): cover the rules, the service, every status code and SQL Server |
+| `de44b98` | 2026-11-09 | docs(api): add API-NOTES.md, the README section and the request file notes |
+
+### Part C: OpenAPI, versioning and the client SDK (`week4-partC`)
+
+| Commit | Date | Message |
+|---|---|---|
+| `1f5799e` | 2026-11-09 | feat(api): add URL versioning, per-version OpenAPI documents and Swagger UI |
+| `89a39f0` | 2026-11-09 | feat(client): generate the v2 client with NSwag and add a console consumer |
+| `efb5e57` | 2026-11-09 | docs(api): add VERSIONING.md, the OpenAPI explanation and Part C evidence |
+
+### Part D: security and the courier app (`week4-partD`)
+
+| Commit | Date | Message |
+|---|---|---|
+| `c548a98` | 2026-11-09 | feat(api): secure the API with JWT bearer tokens, roles and partner API keys |
+| `5ffd5d9` | 2026-11-09 | feat(offline): keep an optional recipient signature on a scan |
+| `448787e` | 2026-11-09 | feat(courier): add the typed API client, resilience, JSON, sync and view models |
+| `5860fe3` | 2026-11-09 | feat(courier): add the .NET MAUI app with Login, New Scan, Pending and Sync Status |
+| `7dfc3f6` | 2026-11-09 | docs: add SECURITY.md, RESILIENCE.md, the Part D README section and evidence |
 
 ## Early commit messages
 

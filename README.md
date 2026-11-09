@@ -2,7 +2,7 @@
 
 ApexPost is a .NET 10 / C# 14 ASP.NET Core MVC counter platform for branch retail sales, shipping, money orders, identity checks, inventory, reporting, and audit. The solution uses a layered domain/application/infrastructure/web architecture. Data is stored in Microsoft SQL Server through EF Core 10, behind repository and query interfaces.
 
-**Repository:** <https://github.com/vercellmotive/ApexPost>. A zip has no Git history, so [`docs/GIT-HISTORY.md`](docs/GIT-HISTORY.md) lists the commits and pull requests.
+**Repository:** <https://github.com/vercellmotive/ApexPost-TusharSharma> (it was `vercellmotive/ApexPost`, and the old address redirects). A zip has no Git history, so [`docs/GIT-HISTORY.md`](docs/GIT-HISTORY.md) lists the commits and pull requests.
 
 ## Requirements and run
 
@@ -64,7 +64,7 @@ dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --sta
 dotnet test ApexPost.slnx
 ```
 
-This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), and the Week 4 projects `ApexPost.Courier.Offline.Tests` (96 tests that use an embedded database and need no server), `ApexPost.Api.Tests` (125 tests with no database, and 8 more reported as skipped) and `ApexPost.Courier.Core.Tests` (53 tests). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
+This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), and the Week 4 projects `ApexPost.Courier.Offline.Tests` (97 tests that use an embedded database and need no server), `ApexPost.Api.Tests` (143 tests with no database, and 8 more reported as skipped) and `ApexPost.Courier.Core.Tests` (65 tests). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
 
 ```bash
 APEXPOST_TEST_SQLSERVER="Server=localhost;User Id=<user>;Password=<password>;TrustServerCertificate=True" dotnet test ApexPost.slnx
@@ -346,7 +346,7 @@ dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 32)" --project 
 dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" "$(openssl rand -hex 24)" --project ApexPost.Api
 ```
 
-In Development, `POST /dev/token` issues a test token, for example `{"roles":["Courier"],"courierId":"CR-1001"}`. In Swagger UI, paste it into **Authorize**. [`ApexPost.Api/ApexPost.Api.http`](ApexPost.Api/ApexPost.Api.http) starts by requesting tokens, and ends with the 401, 403, invalid API key and valid token cases.
+In Development only, and only because `appsettings.Development.json` sets `Jwt:AllowDevelopmentTokens`, `POST /dev/token` issues a test token to a caller on the same machine, for example `{"roles":["Courier"],"courierId":"CR-1001"}`. In Swagger UI, paste it into **Authorize**. [`ApexPost.Api/ApexPost.Api.http`](ApexPost.Api/ApexPost.Api.http) starts by requesting tokens, and ends with the 401, 403, invalid API key and valid token cases.
 
 ### The courier app
 
