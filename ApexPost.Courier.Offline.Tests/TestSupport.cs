@@ -78,7 +78,7 @@ internal static class Scans
     public static readonly DateTimeOffset Noon = new(2026, 11, 2, 12, 0, 0, TimeSpan.Zero);
 
     public static ShipmentScan Make(
-        string trackingNumber = "APX-2026-001",
+        string trackingNumber = "APX-20260001",
         ScanType scanType = ScanType.Pickup,
         string courierId = "C-1001",
         DateTimeOffset? at = null,
