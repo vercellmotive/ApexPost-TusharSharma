@@ -12,7 +12,20 @@ public sealed class SecureStorageTokenStore : ITokenStore
 {
     private const string Key = "apexpost.access_token";
 
-    public Task<string?> GetAsync() => SecureStorage.Default.GetAsync(Key);
+    public async Task<string?> GetAsync()
+    {
+        try
+        {
+            return await SecureStorage.Default.GetAsync(Key);
+        }
+        catch (Exception)
+        {
+            // The stored value cannot be decrypted, for example after a restore onto a new device or a changed lock
+            // screen. Forget it, so the courier signs in again instead of the app failing to start.
+            SecureStorage.Default.Remove(Key);
+            return null;
+        }
+    }
 
     public Task SetAsync(string token) => SecureStorage.Default.SetAsync(Key, token);
 

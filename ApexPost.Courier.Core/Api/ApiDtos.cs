@@ -59,9 +59,13 @@ public sealed record ProblemDto(
     string? Detail,
     IReadOnlyDictionary<string, string[]>? Errors);
 
+#if DEBUG
+// Debug builds only: the API's Development-only /dev/token endpoint. A Release build has no way to ask for a token
+// without a password, so these types do not exist there.
 public sealed record DevelopmentTokenRequestDto(IReadOnlyList<string> Roles, string CourierId);
 
 public sealed record DevelopmentTokenResponseDto(string AccessToken, DateTimeOffset ExpiresAtUtc);
+#endif
 
 [JsonSourceGenerationOptions(
     JsonSerializerDefaults.Web,
@@ -72,8 +76,10 @@ public sealed record DevelopmentTokenResponseDto(string AccessToken, DateTimeOff
 [JsonSerializable(typeof(ScanUploadRequestDto))]
 [JsonSerializable(typeof(ScanUploadResponseDto))]
 [JsonSerializable(typeof(ProblemDto))]
+#if DEBUG
 [JsonSerializable(typeof(DevelopmentTokenRequestDto))]
 [JsonSerializable(typeof(DevelopmentTokenResponseDto))]
+#endif
 public sealed partial class ApexJsonContext : JsonSerializerContext;
 
 /// <summary>

@@ -148,6 +148,7 @@ public sealed class ViewModelTests : IDisposable
         Assert.StartsWith("Open", status.CircuitText);
     }
 
+#if DEBUG
     [Fact]
     public async Task Login_stores_a_development_token_in_the_token_store_and_opens_the_app()
     {
@@ -162,6 +163,7 @@ public sealed class ViewModelTests : IDisposable
         Assert.Equal(["main"], navigator.Visits);
         Assert.Equal("/dev/token", _harness.Server.Received.Single().Path);
     }
+#endif
 
     [Fact]
     public async Task A_pasted_token_without_a_courier_id_is_refused()

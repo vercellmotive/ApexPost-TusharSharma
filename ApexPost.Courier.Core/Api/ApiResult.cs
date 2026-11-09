@@ -33,8 +33,11 @@ public sealed record ApiResult<T>(T? Value, ApiFailureKind Failure, HttpStatusCo
     [MemberNotNullWhen(true, nameof(Value))]
     public bool Succeeded => Failure == ApiFailureKind.None && Value is not null;
 
-    /// <summary>True when the same request may succeed later, so scans stay Pending.</summary>
-    public bool IsTransient => Failure is ApiFailureKind.Unreachable or ApiFailureKind.CircuitOpen or ApiFailureKind.ServerError;
+    /// <summary>
+    /// True when the same request may succeed later, so scans stay Pending. A reply the app cannot read counts too:
+    /// a captive-portal page on public Wi-Fi answers 200 with HTML, and the scans must not be lost because of it.
+    /// </summary>
+    public bool IsTransient => Failure is ApiFailureKind.Unreachable or ApiFailureKind.CircuitOpen or ApiFailureKind.ServerError or ApiFailureKind.Malformed;
 
     public static ApiResult<T> Success(T value, HttpStatusCode status) => new(value, ApiFailureKind.None, status, null);
 
