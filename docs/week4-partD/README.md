@@ -17,6 +17,12 @@ The reconnect upload, the 20-scan batches, the retry and circuit breaker behavio
 
 ## Demo video
 
-The 3–5 minute video is recorded by the student, because it shows their own machine. Suggested order, with the API started by `dotnet run --project ApexPost.Api --launch-profile https`:
+[`demo.mp4`](demo.mp4) (4 min 37 s, no audio, captions on screen) shows the Debug courier app running on an Android emulator against the real API over HTTPS with SQL Server:
 
-1. Login: tap "Get development token". 2. Turn on airplane mode, save two or three scans, and open Pending (the count follows the change listener). 3. Turn airplane mode off and watch Pending drop to zero and Sync Status show the last sync. 4. In Swagger UI or `ApexPost.Api.http`, show a 401 (no token) and a 403 (courier token on DELETE). 5. Stop the API, save a scan with the device online so sync fails, and show the orange banner and the circuit state "Open" on Sync Status, then restart the API and show it recover after about 30 seconds.
+1. **Login**: the app asks the Development-only `/dev/token` for a Courier token and keeps it in SecureStorage.
+2. **Scans saved in airplane mode**: two scans are saved on the device as Pending (Couchbase Lite), the "Server unavailable – working offline" banner shows, and Pending reads 2.
+3. **Automatic sync after reconnecting**: airplane mode off, Pending drops to 0, Sync Status shows "2 synced", and the API's scan list for the shipment shows both scans.
+4. **401 and 403**: real responses from the API for no token, an invalid token, a courier token on an Admin-only route, a scan under another courier's id, and a wrong partner key, each as ProblemDetails.
+5. **Circuit breaker**: with the API stopped, a saved scan stays Pending, the retries fail, and Sync Status shows the circuit **Open**. After the API is started again and the 30 second open period passes, Sync now closes the circuit, Pending drops to 0 and the scan reaches the server.
+
+It was recorded with `adb screenrecord` while a script drove the emulator (airplane mode, taps, and stopping and starting the API), then assembled with ffmpeg. Nothing in it is drawn: the phone is the real app, and the 401/403 and server lists are the API's actual replies.
