@@ -6,6 +6,7 @@
   <Project Path="ApexPost.Domain/ApexPost.Domain.csproj" Id="32533460-ddb5-4637-b1ce-3c3e393bef31" />
   <Project Path="ApexPost.Infrastructure/ApexPost.Infrastructure.csproj" Id="a716d65a-ac2f-42ef-82df-05435f705a88" />
   <Project Path="ApexPost.Test/ApexPost.Test.csproj" Id="5191b9b6-f575-4dcf-809d-e4be9d488b23" />
+  <Project Path="ApexPost.Tracking.Infrastructure/ApexPost.Tracking.Infrastructure.csproj" />
   <Project Path="ApexPost.Tracking/ApexPost.Tracking.csproj" />
   <Project Path="ApexPost.Web/ApexPost.Web.csproj" Id="494c5fc9-e9c1-4f46-8451-92c19292a228" />
 </Solution>
