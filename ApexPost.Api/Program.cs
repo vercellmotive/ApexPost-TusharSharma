@@ -26,7 +26,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().AllowAnonymous();
     app.UseSwaggerUI(options =>
     {
-        // The Authorize button keeps the token while the page is open, so every "Try it out" sends it.
+        // The Authorize button keeps the token in the browser's local storage (Development only), so it survives a refresh
+        // and every "Try it out" sends it.
         options.EnablePersistAuthorization();
         options.RoutePrefix = "swagger";
         options.DocumentTitle = "ApexPost Logistics API";

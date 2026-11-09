@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using ApexPost.Api.Security;
 using ApexPost.Application.Interfaces;
 using ApexPost.Tracking.Application;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -94,7 +95,24 @@ public sealed class ApiFactory(string environment = "Testing") : WebApplicationF
             services.AddSingleton<IShipmentStore>(_ => StoreFailure is null ? Store : new FailingStore(StoreFailure));
             services.AddSingleton<IBranchRepository, FakeBranches>();
             services.AddSingleton<TimeProvider>(Clock);
+            services.AddTransient<IStartupFilter, LoopbackCallerFilter>();
         });
+    }
+
+    /// <summary>The test host has no caller address. This gives requests a loopback one, unless a test asks for none.</summary>
+    public const string NoAddressHeader = "X-Test-No-Address";
+
+    private sealed class LoopbackCallerFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, nextMiddleware) =>
+            {
+                context.Connection.RemoteIpAddress = context.Request.Headers.ContainsKey(NoAddressHeader) ? null : System.Net.IPAddress.Loopback;
+                return nextMiddleware();
+            });
+            next(app);
+        };
     }
 
     private sealed class FailingStore(Exception failure) : IShipmentStore

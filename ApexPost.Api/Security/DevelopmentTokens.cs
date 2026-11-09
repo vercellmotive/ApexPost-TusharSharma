@@ -20,7 +20,8 @@ public sealed record DevelopmentTokenResponse(string AccessToken, string TokenTy
 /// POST /dev/token issues short-lived tokens for testing, signed with the same key the API validates with. Three
 /// separate guards must all hold, so one wrong setting does not hand out Admin tokens: the environment must be
 /// Development, <c>Jwt:AllowDevelopmentTokens</c> must be true (it is set only in appsettings.Development.json), and
-/// the caller must be on the same machine. It is not in the OpenAPI documents. A real identity provider replaces
+/// the caller must be on the same machine (a missing address counts as remote). The settings file that holds the flag is left out of
+/// <c>dotnet publish</c>. It is not in the OpenAPI documents. A real identity provider replaces
 /// it; see SECURITY.md.
 /// </summary>
 internal static class DevelopmentTokens
@@ -38,8 +39,11 @@ internal static class DevelopmentTokens
     /// <summary>The configuration switch that turns the endpoint on. Off unless a developer's own settings say so.</summary>
     public const string AllowSetting = "Jwt:AllowDevelopmentTokens";
 
-    /// <summary>Kestrel always sets the caller's address. A test host has none, and is in the same process.</summary>
-    internal static bool IsLocalCaller(System.Net.IPAddress? address) => address is null || System.Net.IPAddress.IsLoopback(address);
+    /// <summary>
+    /// Kestrel sets the caller's address for TCP connections. A request through a Unix socket or an unusual proxy has
+    /// none, and that is not proof of a local caller, so a missing address counts as remote.
+    /// </summary>
+    internal static bool IsLocalCaller(System.Net.IPAddress? address) => address is not null && System.Net.IPAddress.IsLoopback(address);
 
     internal static IResult Issue(HttpContext httpContext, DevelopmentTokenRequest request, IOptions<JwtOptions> options)
     {

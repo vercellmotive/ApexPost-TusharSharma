@@ -26,7 +26,7 @@ APEXPOST_UPDATE_CONTRACTS=1 dotnet test ApexPost.Api.Tests --filter ContractTest
 | v1, v2 | Scan endpoints (`/scans`) | No | The scan contract did not change, so one controller serves both versions |
 | v1, v2 | Part D: every endpoint needs a bearer token, with roles for writes (401 and 403 added to every operation) | **Yes**, on purpose | Security fixes go into every supported version. An anonymous client must now sign in. The bodies did not change |
 | v1, v2 | Part D: a Delivered or Failed scan moves a shipment that is `OutForDelivery` to Delivered or Failed | No | The status was already allowed to change to these values. Clients see the status they would have set themselves with `PATCH`, and the response shapes did not change |
-| v1, v2 | Part D: 429 responses when a rate limit is exceeded | No | An added response for abuse only. Well-behaved clients never see it |
+| v1, v2 | Part D: 429 responses when a rate limit is exceeded | No | An added response for abuse only, declared on every operation (and in `contracts/` and the generated client). Well-behaved clients never see it |
 | v2 | Part D: `GET /api/v2/partner/shipments/{trackingNumber}` with an `X-Api-Key` header | No | A new endpoint. Existing clients are unaffected |
 
 Rule of thumb: adding an optional request field, a response field, an endpoint or a header is non-breaking. Removing or renaming a field, changing its type or meaning, making an optional field required, or changing a status code is breaking and needs a new version.

@@ -21,6 +21,7 @@ internal static class PartnerEndpoints
             .WithDescription("Read-only tracking for partner systems. Send the partner API key in the X-Api-Key header.")
             .Produces<PartnerShipmentResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
     }
