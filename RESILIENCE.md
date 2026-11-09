@@ -48,7 +48,7 @@ So if the reply to an upload is lost and the pipeline, or the next sync run, sen
 
 ## Edits and deletes while an upload runs
 
-After the server accepts a scan, `ScanSyncService` reads the scan again before marking it Synced. If it was edited meanwhile it stays Pending, so the edit is sent too (the server skips the id it already has, so a correction needs a new scan, which is the courier's call). If it was deleted, it stays deleted. The Part A `OutboxService` has the same rule for failures that may pass: an uploader that throws `TransientUploadException` leaves the scan Pending and stops the run, instead of marking it Failed.
+After the server accepts a scan, `ScanSyncService` reads the scan again before marking it Synced. If it was edited meanwhile it stays Pending and is sent again on the next run. The server already has that id, so it reports it as a duplicate and keeps the version it first received: an edit after upload never changes the server's copy. A correction must be recorded as a new scan, which is the courier's call. The app has no edit screen, so this only matters for code that calls `Update` directly. If it was deleted, it stays deleted. The Part A `OutboxService` has the same rule for failures that may pass: an uploader that throws `TransientUploadException` leaves the scan Pending and stops the run, instead of marking it Failed.
 
 ## Logging
 

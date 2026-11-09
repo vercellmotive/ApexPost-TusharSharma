@@ -1,6 +1,6 @@
 # ApexPost API versioning
 
-The version is part of the URL: `/api/v1/shipments` and `/api/v2/shipments`. Both versions call the same `IShipmentService`, so the business rules are identical. Only the response DTOs and their mapping differ (`Contracts/` for v1, `Contracts/V2/` for v2).
+The version is part of the URL: `/api/v1/shipments` and `/api/v2/shipments`. Both versions call the same `IShipmentService`, so the business rules are identical. Only the response DTOs and their mapping differ (`ApexPost.Api/Contracts/` for v1, `ApexPost.Api/Contracts/V2/` for v2).
 
 Every response reports the versions in two headers, `api-supported-versions: 2.0` and `api-deprecated-versions: 1.0`, because `ReportApiVersions` is on.
 
