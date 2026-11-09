@@ -29,13 +29,10 @@ internal static class DevelopmentTokens
             return;
         }
 
-        app.MapPost("/dev/token", (DevelopmentTokenRequest request, IOptions<JwtOptions> options) => Issue(request, options, TimeProvider.System))
-            .AllowAnonymous()
-            .ExcludeFromDescription();
+        app.MapPost("/dev/token", Issue).AllowAnonymous().ExcludeFromDescription();
     }
 
-    // The real clock, because the bearer handler checks the lifetime against the real clock too.
-    internal static IResult Issue(DevelopmentTokenRequest request, IOptions<JwtOptions> options, TimeProvider clock)
+    internal static IResult Issue(DevelopmentTokenRequest request, IOptions<JwtOptions> options)
     {
         var roles = request.Roles ?? [];
         var errors = new Dictionary<string, string[]>();
@@ -55,7 +52,8 @@ internal static class DevelopmentTokens
         }
 
         var jwt = options.Value;
-        var now = clock.GetUtcNow();
+        // The real clock, because the bearer handler checks the lifetime against the real clock too.
+        var now = DateTimeOffset.UtcNow;
         var expires = now.AddMinutes(jwt.DevelopmentTokenMinutes);
         var claims = new List<Claim> { new("sub", request.CourierId ?? "dev-admin") };
         claims.AddRange(roles.Distinct().Select(role => new Claim(ApexPostRoles.RoleClaim, role)));
