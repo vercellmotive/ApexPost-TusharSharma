@@ -32,3 +32,7 @@ Couchbase Lite is a library inside the app's own process, not a server. Its lock
 So the app uses one `CourierDatabase` per process and disposes it when finished, and the harness must not be pointed at a folder another program is using. Nothing in the code stops a second process from opening the folder. On a phone the operating system gives each app its own sandbox, so this does not arise. If several programs ever needed the same scans, one process would own the database and the others would call it, or all of them would sync through the server.
 
 Part D added one optional field, `recipientSignatureName`. It is written only on a Delivered scan that has a signature, because the server needs one for a delivery. Every other scan keeps exactly the seven fields from Part A: `trackingNumber`, `scanType`, `courierId`, `location`, `scannedAtUtc`, `notes` and `syncStatus`. The fake uploader is replaced in the app by the real API call (`ApiShipmentUploader`), which sends scans in batches of 20 when the device comes back online.
+
+## Evidence
+
+Terminal screenshots of the queries, the Synced and Failed outcomes, the change listener and `listener.log`, and the query plans are in [`docs/week4-partA`](docs/week4-partA).

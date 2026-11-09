@@ -23,7 +23,7 @@ It builds `ApexPost.Courier.Offline.Harness` and runs it seven times on a cleare
 | `7-query-plans.png` | `--explain`: the value index each statement uses |
 | `transcript.txt` | Everything the window showed, as text |
 
-When they look right, point `docs/week4-partA/README.md` at these files instead of the drawn images, and delete the drawn ones.
+`docs/week4-partA/README.md` points at these files.
 
 ## Part D: the demo video
 
