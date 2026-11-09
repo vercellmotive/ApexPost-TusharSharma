@@ -28,6 +28,20 @@ public class DocumentModelTests
     }
 
     [Fact]
+    public void ADeliveredScanWithASignature_AddsOnlyTheOptionalSignatureField()
+    {
+        using var db = new TestCourierDatabase();
+        var created = db.Repository.Create(ShipmentScan.CreatePending("APX-9", ScanType.Delivered, "C-5", "Front door", DateTimeOffset.UtcNow, recipientSignatureName: "Mia Fictional"));
+
+        using var document = db.Database.DefaultCollection.GetDocument(created.Id);
+
+        Assert.Equal(8, document!.Keys.Count);
+        Assert.Equal("Mia Fictional", document.GetString("recipientSignatureName"));
+        Assert.Equal("Mia Fictional", db.Repository.Get(created.Id)!.RecipientSignatureName);
+        Assert.Equal("Mia Fictional", Assert.Single(db.Repository.FindPending()).RecipientSignatureName);
+    }
+
+    [Fact]
     public void TheTimeIsStoredAsUtcText_SoOrderingByTextIsOrderingByTime()
     {
         using var db = new TestCourierDatabase();
