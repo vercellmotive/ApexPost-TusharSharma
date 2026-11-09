@@ -1,0 +1,467 @@
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-a
+=2026-11-9 09:42:27.894+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260001
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: CR-1001
+Location: Sydney NSW
+Notes (optional): Picked up at depot
+Saved scan::f3da429c-4d19-43ac-95b0-1fec460a87b1 on this device as Pending.
+  16:12:36.651 [listener] changed: scan::f3da429c-4d19-43ac-95b0-1fec460a87b1
+  [pending] 1 scan(s) waiting to sync
+Courier CR-1001 has 1 scan(s): Pickup 1, InTransit 0, Delivered 0, Failed 0.
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 1 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260001
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 2
+Courier ID: CR-1001
+Location: Parramatta NSW
+Notes (optional): Loaded on van 12
+Saved scan::5aa0c68f-7173-4d7c-ac3b-adb2ea591f00 on this device as Pending.
+  16:12:45.911 [listener] changed: scan::5aa0c68f-7173-4d7c-ac3b-adb2ea591f00
+Courier CR-1001 has 2 scan(s): Pickup 1, InTransit 1, Delivered 0, Failed 0.
+  [pending] 2 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 2 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260002
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: CR-1001
+Location: Sydney NSW
+Notes (optional): [fail] torn label
+Saved scan::05db763c-a46f-457b-bc59-3c22dfcb3361 on this device as Pending.
+  16:12:54.840 [listener] changed: scan::05db763c-a46f-457b-bc59-3c22dfcb3361
+Courier CR-1001 has 3 scan(s): Pickup 2, InTransit 1, Delivered 0, Failed 0.
+  [pending] 3 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 3 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 6
+Closing the database. Goodbye.
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-a
+=2026-11-9 09:42:57.035+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 3 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260001
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 3
+Courier ID: CR-1001
+Location: Penrith NSW
+Notes (optional): Left with neighbour
+Saved scan::3aa0f18b-20eb-4dd5-ad6c-5f0406ab1d79 on this device as Pending.
+  16:13:06.000 [listener] changed: scan::3aa0f18b-20eb-4dd5-ad6c-5f0406ab1d79
+  [pending] 4 scan(s) waiting to sync
+Courier CR-1001 has 4 scan(s): Pickup 2, InTransit 1, Delivered 1, Failed 0.
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 4 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260003
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: CR-2002
+Location: Melbourne VIC
+Notes (optional): 
+Saved scan::d874ad06-e301-400e-b889-e81ba7e9da2e on this device as Pending.
+  16:13:13.517 [listener] changed: scan::d874ad06-e301-400e-b889-e81ba7e9da2e
+Courier CR-2002 has 1 scan(s): Pickup 1, InTransit 0, Delivered 0, Failed 0.
+  [pending] 5 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 5 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 
+[picture saved: 1-add-scan-count-per-scan-type.png]
+6
+Closing the database. Goodbye.
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-a
+=2026-11-9 09:43:17.084+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 5 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 2
+Tracking number: APX-20260001
+3 scan(s) for APX-20260001, oldest first:
+  2026-11-09 16:12:36 UTC  APX-20260001   Pickup    CR-1001  Sydney NSW       [Pending]  scan::f3da429c-4d19-43ac-95b0-1fec460a87b1  note: Picked up at depot
+  2026-11-09 16:12:45 UTC  APX-20260001   InTransit CR-1001  Parramatta NSW   [Pending]  scan::5aa0c68f-7173-4d7c-ac3b-adb2ea591f00  note: Loaded on van 12
+  2026-11-09 16:13:05 UTC  APX-20260001   Delivered CR-1001  Penrith NSW      [Pending]  scan::3aa0f18b-20eb-4dd5-ad6c-5f0406ab1d79  note: Left with neighbour
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 5 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 
+[picture saved: 2-find-by-tracking-number.png]
+6
+Closing the database. Goodbye.
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-a
+=2026-11-9 09:43:23.995+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 5 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 3
+5 scan(s) waiting to sync, oldest first:
+  2026-11-09 16:12:36 UTC  APX-20260001   Pickup    CR-1001  Sydney NSW       [Pending]  scan::f3da429c-4d19-43ac-95b0-1fec460a87b1  note: Picked up at depot
+  2026-11-09 16:12:45 UTC  APX-20260001   InTransit CR-1001  Parramatta NSW   [Pending]  scan::5aa0c68f-7173-4d7c-ac3b-adb2ea591f00  note: Loaded on van 12
+  2026-11-09 16:12:54 UTC  APX-20260002   Pickup    CR-1001  Sydney NSW       [Pending]  scan::05db763c-a46f-457b-bc59-3c22dfcb3361  note: [fail] torn label
+  2026-11-09 16:13:05 UTC  APX-20260001   Delivered CR-1001  Penrith NSW      [Pending]  scan::3aa0f18b-20eb-4dd5-ad6c-5f0406ab1d79  note: Left with neighbour
+  2026-11-09 16:13:13 UTC  APX-20260003   Pickup    CR-2002  Melbourne VIC    [Pending]  scan::d874ad06-e301-400e-b889-e81ba7e9da2e
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 5 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 
+[picture saved: 3-list-pending.png]
+6
+Closing the database. Goodbye.
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-a
+=2026-11-9 09:43:29.239+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 5 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 4
+Sending pending scans to the fake server...
+  Synced   scan::f3da429c-4d19-43ac-95b0-1fec460a87b1
+  Synced   scan::5aa0c68f-7173-4d7c-ac3b-adb2ea591f00
+  Synced   scan::3aa0f18b-20eb-4dd5-ad6c-5f0406ab1d79
+  Synced   scan::d874ad06-e301-400e-b889-e81ba7e9da2e
+  Failed   scan::05db763c-a46f-457b-bc59-3c22dfcb3361  (The fake server rejected the scan because its notes contain [fail].)
+Done: 4 synced, 1 failed, 0 skipped.
+  16:13:30.964 [listener] changed: scan::f3da429c-4d19-43ac-95b0-1fec460a87b1
+  [pending] 1 scan(s) waiting to sync
+  16:13:30.965 [listener] changed: scan::5aa0c68f-7173-4d7c-ac3b-adb2ea591f00
+  [pending] 0 scan(s) waiting to sync
+  16:13:30.965 [listener] changed: scan::05db763c-a46f-457b-bc59-3c22dfcb3361
+  [pending] 0 scan(s) waiting to sync
+  16:13:30.965 [listener] changed: scan::3aa0f18b-20eb-4dd5-ad6c-5f0406ab1d79
+  [pending] 0 scan(s) waiting to sync
+  16:13:30.966 [listener] changed: scan::d874ad06-e301-400e-b889-e81ba7e9da2e
+  [pending] 0 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 3
+No scans are waiting to sync.
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 2
+Tracking number: APX-20260002
+1 scan(s) for APX-20260002, oldest first:
+  2026-11-09 16:12:54 UTC  APX-20260002   Pickup    CR-1001  Sydney NSW       [Failed]  scan::05db763c-a46f-457b-bc59-3c22dfcb3361  note: [fail] torn label
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-a/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 
+[picture saved: 4-simulate-sync-then-pending-and-failed.png]
+6
+Closing the database. Goodbye.
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-b
+=2026-11-9 09:43:41.019+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260010
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: CR-1001
+Location: Sydney NSW
+Notes (optional): 
+Saved scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3 on this device as Pending.
+  16:13:47.907 [listener] changed: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+  [pending] 1 scan(s) waiting to sync
+Courier CR-1001 has 1 scan(s): Pickup 1, InTransit 0, Delivered 0, Failed 0.
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 1 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260010
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 2
+Courier ID: CR-1001
+Location: Parramatta NSW
+Notes (optional): 
+Saved scan::0d9604fb-f234-4add-ad53-da2b719669d2 on this device as Pending.
+  16:13:55.486 [listener] changed: scan::0d9604fb-f234-4add-ad53-da2b719669d2
+Courier CR-1001 has 2 scan(s): Pickup 1, InTransit 1, Delivered 0, Failed 0.
+  [pending] 2 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 2 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-20260011
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: CR-1001
+Location: Sydney NSW
+Notes (optional): [fail] torn label
+Saved scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c on this device as Pending.
+  16:14:04.414 [listener] changed: scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c
+Courier CR-1001 has 3 scan(s): Pickup 2, InTransit 1, Delivered 0, Failed 0.
+  [pending] 3 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 3 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 
+[picture saved: 5-listener-while-adding.png]
+6
+Closing the database. Goodbye.
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-b
+=2026-11-9 09:44:07.957+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 3 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 4
+Sending pending scans to the fake server...
+  Synced   scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+  Synced   scan::0d9604fb-f234-4add-ad53-da2b719669d2
+  Failed   scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c  (The fake server rejected the scan because its notes contain [fail].)
+Done: 2 synced, 1 failed, 0 skipped.
+  16:14:09.699 [listener] changed: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+  [pending] 0 scan(s) waiting to sync
+  16:14:09.700 [listener] changed: scan::0d9604fb-f234-4add-ad53-da2b719669d2
+  [pending] 0 scan(s) waiting to sync
+  16:14:09.701 [listener] changed: scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c
+  [pending] 0 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 5
+3 scan(s) on this device:
+  2026-11-09 16:13:47 UTC  APX-20260010   Pickup    CR-1001  Sydney NSW       [Synced]  scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+  2026-11-09 16:13:55 UTC  APX-20260010   InTransit CR-1001  Parramatta NSW   [Synced]  scan::0d9604fb-f234-4add-ad53-da2b719669d2
+  2026-11-09 16:14:04 UTC  APX-20260011   Pickup    CR-1001  Sydney NSW       [Failed]  scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c  note: [fail] torn label
+Scan ID to delete: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+Deleted scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3.
+  16:14:17.327 [listener] changed: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+  [pending] 0 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-capture-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 6
+Closing the database. Goodbye.
+
+$ cat /tmp/apexpost-capture-b/listener.log
+16:13:47.907 [listener] changed: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+16:13:55.486 [listener] changed: scan::0d9604fb-f234-4add-ad53-da2b719669d2
+16:14:04.414 [listener] changed: scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c
+16:14:09.699 [listener] changed: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+16:14:09.700 [listener] changed: scan::0d9604fb-f234-4add-ad53-da2b719669d2
+16:14:09.701 [listener] changed: scan::3b9fc944-0b87-4181-a086-0dae2a2ead5c
+16:14:17.327 [listener] changed: scan::ff99ddbf-a770-4cd9-a135-4fe98a145de3
+
+[picture saved: 6-listener-sync-delete-and-log-file.png]
+$ dotnet ApexPost.Courier.Offline.Harness/bin/Release/net10.0/ApexPost.Courier.Offline.Harness.dll --data /tmp/apexpost-capture-x --explain
+2026-11-9 09:44:20.867+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+1. All scans for a tracking number
+   SQL++ : SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus, recipientSignatureName FROM _ WHERE trackingNumber = $trackingNumber ORDER BY scannedAtUtc, META().id
+   Plan  : SEARCH _ USING INDEX idx_trackingNumber (<expr>=?) ; USE TEMP B-TREE FOR ORDER BY
+2. All scans where syncStatus = Pending
+   SQL++ : SELECT META().id AS id, trackingNumber, scanType, courierId, location, scannedAtUtc, notes, syncStatus, recipientSignatureName FROM _ WHERE syncStatus = $syncStatus ORDER BY scannedAtUtc, META().id
+   Plan  : SEARCH _ USING INDEX idx_syncStatus (<expr>=?) ; USE TEMP B-TREE FOR ORDER BY
+3. Number of scans per scanType for one courier
+   SQL++ : SELECT scanType, COUNT(*) AS total FROM _ WHERE courierId = $courierId GROUP BY scanType
+   Plan  : SCAN _ ; USE TEMP B-TREE FOR GROUP BY
+4. Number of pending scans
+   SQL++ : SELECT COUNT(*) AS total FROM _ WHERE syncStatus = $syncStatus
+   Plan  : SEARCH _ USING INDEX idx_syncStatus (<expr>=?)
+
+[picture saved: 7-query-plans.png]
