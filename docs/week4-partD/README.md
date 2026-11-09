@@ -12,7 +12,7 @@ On the emulator run, the API received the scan from the app: `GET /api/v2/shipme
 
 The reconnect upload, the 20-scan batches, the retry and circuit breaker behaviour, the 401 sign-out and the courierId rule are verified by automated tests rather than screenshots:
 
-- `ApexPost.Courier.Core.Tests` (53 tests): retries on 408, 5xx and network errors, never on a 4xx, per-attempt and overall timeouts, the circuit opening and closing with its log lines, a 401 clearing the token without logging it, malformed and unknown JSON, batching by 20, scans staying Pending while the server is down, and the sync after `ConnectivityChanged`.
+- `ApexPost.Courier.Core.Tests` (65 tests): retries on 408, 5xx and network errors, never on a 4xx, per-attempt and overall timeouts, the circuit opening and closing with its log lines, a 401 clearing the token without logging it, malformed and unknown JSON, batching by 20, scans staying Pending while the server is down, and the sync after `ConnectivityChanged`.
 - `ApexPost.Api.Tests` `CourierAppEndToEndTests`: login, 25 scans saved offline, automatic upload on reconnect, a resent scan stored once, a refused scan marked Failed, and another courier's token refused.
 
 ## Demo video

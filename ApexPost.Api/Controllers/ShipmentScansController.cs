@@ -19,6 +19,7 @@ namespace ApexPost.Api.Controllers;
 [Tags("Scans")]
 [Authorize]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class ShipmentScansController(IShipmentService shipments) : ControllerBase
 {

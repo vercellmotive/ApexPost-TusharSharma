@@ -71,7 +71,7 @@ Repository: <https://github.com/vercellmotive/ApexPost-TusharSharma> (earlier pu
 
 ## Week 4: branches and pull requests
 
-The four parts are chained: each branch starts from the one before it, so merge them in order, A, B, C, D. The pull requests below are open until they are merged on GitHub, and the pull request page is the record of when. The commits are listed as they stood when this file was written (the review fixes for Part D are on `week4-partD` after them).
+The four parts are chained: each branch starts from the one before it, so merge them in order, A, B, C, D. Pull requests #17 to #20 were merged into `master` in that order; the review fixes that came after were not in them and are in [#21](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/21). The pull request page is the record of when each merged. The commits are listed as they stood when this file was written (the review fixes for Part D are on `week4-partD` after them).
 
 | PR | Branch | Part |
 |---|---|---|

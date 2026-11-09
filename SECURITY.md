@@ -27,8 +27,10 @@ A courier may upload only scans recorded under their own `courierId` claim. `Shi
 **Development tokens.** `POST /dev/token` issues a short-lived token signed with the same key, and anyone who could call it could become an Admin, so it is guarded three times and all three must hold:
 
 1. `ASPNETCORE_ENVIRONMENT` is Development. One wrong environment setting is not enough, because
-2. `Jwt:AllowDevelopmentTokens` must also be `true`. It is set only in `appsettings.Development.json`, so a Production deployment, or any deployment that copies `appsettings.json` alone, has no such route.
-3. The caller must be on the same machine (a loopback address). Anyone else gets a 404, as if the route did not exist.
+2. `Jwt:AllowDevelopmentTokens` must also be `true`. It is set only in `appsettings.Development.json`, and the project leaves that file out of `dotnet publish`, so a published build has no such flag even if someone sets the environment to Development. A Production deployment has no such route.
+3. The caller must be on the same machine (a loopback address). Anyone else gets a 404, as if the route did not exist. A request with no caller address at all, such as one arriving through a Unix-socket proxy, counts as remote, not local (`A_request_with_no_caller_address_does_not_get_a_development_token`).
+
+`AllowedHosts` is `api.apexpost.example;localhost` in `appsettings.json` (and `*` only in Development, so the Android emulator's `10.0.2.2` works), so a forged `Host` header is rejected before it can reach a `Location` header. Replace the host name with the real one when deploying. Rate limits are per caller address; behind a reverse proxy, configure forwarded headers so each caller keeps their own limit. Swagger UI keeps the pasted token in the browser's local storage in Development.
 
 Setting the environment wrongly does expose the other Development features (Swagger UI, full error details, automatic migrations and seeding), so deployments must set the environment explicitly. `dotnet user-jwts` is the alternative the brief names, and it needs none of this: it keeps the signing key in user secrets and issues tokens with the .NET CLI.
 

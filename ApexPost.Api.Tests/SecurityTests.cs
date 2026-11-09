@@ -262,6 +262,20 @@ public sealed class SecurityTests : IDisposable
         Assert.DoesNotContain("accessToken", await response.Content.ReadAsStringAsync());
     }
 
+    [Fact]
+    public async Task A_request_with_no_caller_address_does_not_get_a_development_token()
+    {
+        using var development = new ApiFactory("Development");
+        var client = development.CreateAnonymousClient();
+        client.DefaultRequestHeaders.Add(ApiFactory.NoAddressHeader, "1");
+
+        var response = await client.PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.DoesNotContain("accessToken", await response.Content.ReadAsStringAsync());
+        Assert.False(ApexPost.Api.Security.DevelopmentTokens.IsLocalCaller(null));
+    }
+
     [Theory]
     [InlineData("127.0.0.1", true)]
     [InlineData("::1", true)]

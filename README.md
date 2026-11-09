@@ -6,6 +6,8 @@ ApexPost is a .NET 10 / C# 14 ASP.NET Core MVC counter platform for branch retai
 
 ## Requirements and run
 
+**Run order for the Week 4 API:** (1) create and seed the Week 3 database with steps 1 to 3 below, (2) set the API's secrets (the JWT signing key and a partner key, shown under Week 4 Part D), (3) start the API with `dotnet run --project ApexPost.Api --launch-profile https`, then open `https://localhost:7180/swagger`. The courier app comes after that (see Part D).
+
 You need the .NET 10 SDK and a SQL Server you control. Free options include SQL Server Developer or Express, LocalDB on Windows, or the Developer image in Docker, plus SSMS. Docker Desktop itself needs a paid plan at larger companies. Never use a shared training database.
 
 1. Restore the local `dotnet-ef` tool and the solution's packages. `dotnet ef` fails with `NETSDK1004` if the projects haven't been restored:
@@ -251,7 +253,7 @@ Couriers lose network coverage but must still record pickups and deliveries, so 
 | `CourierDatabase` (opens the database, creates the indexes, listens for changes), `CouchbaseScanRepository`, the SQL++ text | `ApexPost.Courier.Offline/Storage` |
 | `OutboxService` and the fake uploader | `ApexPost.Courier.Offline/Sync` |
 
-Run the harness. The database goes in your local application data folder (`~/.local/share/ApexPost/courier` on macOS and Linux) unless you pass `--data <folder>`:
+Run the harness. The database goes in your local application data folder (`~/Library/Application Support/ApexPost/courier` on macOS, `~/.local/share/ApexPost/courier` on Linux, `%LOCALAPPDATA%\ApexPost\courier` on Windows) unless you pass `--data <folder>`:
 
 ```bash
 dotnet run --project ApexPost.Courier.Offline.Harness
@@ -346,6 +348,16 @@ dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 32)" --project 
 dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" "$(openssl rand -hex 24)" --project ApexPost.Api
 ```
 
+PowerShell versions of the two commands above (there is no `openssl` or `$(...)` on a plain Windows shell):
+
+```powershell
+dotnet user-secrets set "Jwt:SigningKey" ([Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))) --project ApexPost.Api
+```
+
+```powershell
+dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" (-join ((1..24) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })) --project ApexPost.Api
+```
+
 In Development only, and only because `appsettings.Development.json` sets `Jwt:AllowDevelopmentTokens`, `POST /dev/token` issues a test token to a caller on the same machine, for example `{"roles":["Courier"],"courierId":"CR-1001"}`. In Swagger UI, paste it into **Authorize**. [`ApexPost.Api/ApexPost.Api.http`](ApexPost.Api/ApexPost.Api.http) starts by requesting tokens, and ends with the 401, 403, invalid API key and valid token cases.
 
 ### The courier app
@@ -372,6 +384,8 @@ dotnet build ApexPost.Courier -f net10.0-android -p:CourierPlatforms=net10.0-and
 ```
 
 The API base URLs are in `ApexPost.Courier/appsettings.json`: `https://10.0.2.2:7180` on the Android emulator and `https://localhost:7180` on Windows and elsewhere. Start the API with the `https` profile first.
+
+**Run the app and sign in.** With the API running, start the app on an emulator (`dotnet build ApexPost.Courier -f net10.0-android -p:CourierPlatforms=net10.0-android -t:Run`, or press Run in Visual Studio with the Android emulator selected). On the Login screen in a Debug build, enter a courier id such as `CR-1001` and tap **Get development token (Debug build)**: the app asks the API's Development-only `/dev/token` for a Courier token and keeps it in SecureStorage. Or paste a token from `POST /dev/token` or `dotnet user-jwts`. A Release build has no development sign-in and needs a token from a real identity provider. Then add scans on New Scan, turn on airplane mode to see them stay Pending, and turn it off to watch Sync Status upload them.
 
 `CourierAppEndToEndTests` in `ApexPost.Api.Tests` runs the app's view models, client, handlers, resilience pipeline and Couchbase Lite store against the real API pipeline. It covers login, 25 scans saved offline, the automatic upload on reconnect, a resent scan stored only once, a refused scan marked Failed, and another courier's token refused.
 

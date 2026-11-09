@@ -16,7 +16,7 @@ overall timeout (60 s)
 
 | Setting | Value | Why |
 |---|---|---|
-| Retries | 3 (4 attempts at most) | Mobile failures are usually short: a cell handover, a tunnel, a server restarting. Three retries ride out most of them. More would mostly delay the moment the scan stays safely Pending and the courier moves on. |
+| Retries | 3 (4 attempts at most). The brief says "Retry: 3 attempts"; this reads it as three retries after the first try | Mobile failures are usually short: a cell handover, a tunnel, a server restarting. Three retries ride out most of them. More would mostly delay the moment the scan stays safely Pending and the courier moves on. |
 | Backoff | Exponential from 1 s with jitter (about 1, 2 and 4 s) | Exponential gives the server and the network room to recover instead of hammering them. Jitter stops a fleet of devices that lost coverage together from retrying in lockstep when it comes back. |
 | What is retried | Network errors (`HttpRequestException`), attempt timeouts, HTTP 408 and 5xx | These may succeed later. A 4xx never is: 400, 401, 403, 404 and 409 fail the same way every time, so retrying only wastes battery and data. |
 | Which requests | GET, PUT, DELETE, HEAD, and requests marked idempotent | A retry repeats the request, so it must be safe to repeat. A plain POST is not retried (the `/dev/token` request, for example). |

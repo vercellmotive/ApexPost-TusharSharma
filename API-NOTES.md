@@ -4,17 +4,19 @@ The API exposes shipments and their scans over HTTPS, in two versions: `/api/v1/
 
 ## Endpoints
 
-| Verb | Route | Purpose | Status codes |
-|---|---|---|---|
-| GET | `/api/v{n}/shipments?page=&pageSize=&status=&city=` | Paged, filtered list, newest first | 200 list; 400 page below 1, pageSize outside 1–50, unknown status |
-| GET | `/api/v{n}/shipments/{trackingNumber}` | One shipment | 200; 404 unknown tracking number |
-| POST | `/api/v{n}/shipments` | Create a shipment in Created status | 201 with `Location`; 400 validation; 409 duplicate tracking number; 415 not JSON |
-| PUT | `/api/v{n}/shipments/{trackingNumber}` | Replace recipient, city and weight | 200; 400; 404; 409 shipment is Delivered or Failed, or changed by another request; 415 |
-| PATCH | `/api/v{n}/shipments/{trackingNumber}/status` | Change status only | 200; 400 missing or unknown status; 404; 409 move not allowed, or changed by another request; 415 |
-| DELETE | `/api/v{n}/shipments/{trackingNumber}` | Delete a shipment and its scans | 204; 404; 409 status is not Created |
-| POST | `/api/v{n}/shipments/{trackingNumber}/scans` | Bulk upload of offline scans | 200 with counts; 400 validation; 404; 415 |
-| GET | `/api/v{n}/shipments/{trackingNumber}/scans` | Scan history, oldest first | 200; 404 |
+| Verb | Route | Auth | Purpose | Status codes |
+|---|---|---|---|---|
+| GET | `/api/v{n}/shipments?page=&pageSize=&status=&city=` | Any signed-in user | Paged, filtered list, newest first | 200 list; 400 page below 1, pageSize outside 1–50, unknown status; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| GET | `/api/v{n}/shipments/{trackingNumber}` | Any signed-in user | One shipment | 200; 404 unknown tracking number; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| POST | `/api/v{n}/shipments` | Admin | Create a shipment in Created status | 201 with `Location`; 400 validation; 409 duplicate tracking number; 415 not JSON; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| PUT | `/api/v{n}/shipments/{trackingNumber}` | Admin | Replace recipient, city and weight | 200; 400; 404; 409 shipment is Delivered or Failed, or changed by another request; 415; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| PATCH | `/api/v{n}/shipments/{trackingNumber}/status` | Courier | Change status only | 200; 400 missing or unknown status; 404; 409 move not allowed, or changed by another request; 415; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| DELETE | `/api/v{n}/shipments/{trackingNumber}` | Admin | Delete a shipment and its scans | 204; 404; 409 status is not Created; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| POST | `/api/v{n}/shipments/{trackingNumber}/scans` | Courier, own courierId only | Bulk upload of offline scans | 200 with counts; 400 validation; 403 a scan under another courier's id; 404; 415; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| GET | `/api/v{n}/shipments/{trackingNumber}/scans` | Any signed-in user | Scan history, oldest first | 200; 404; 401 no or invalid token; 403 wrong role; 429 rate limit |
+| GET | `/api/v{n}/partner/shipments/{trackingNumber}` | Partner API key in `X-Api-Key` | Read-only status for a partner | 200; 404; 401 missing or wrong key; 429 more than 30 requests a minute |
 
+The 401, 403 and 429 responses are ProblemDetails and apply to every route above; 403 applies only where a role is required. Role names are in `ApexPostRoles`; a token may hold both.
 The Part B URLs without a version, such as `/api/shipments`, are rewritten to v1 and keep working. An unknown version such as `/api/v3/...` returns 404. Any route also returns 500 ProblemDetails from the global exception handler if something unexpected fails, and 405 for a verb the route does not have.
 
 `{trackingNumber}` uses the `trackingNumber` route constraint. A value that is not `APX-` and eight digits does not match the route, so it gets 404 like any other unknown tracking number.
