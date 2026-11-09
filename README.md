@@ -6,7 +6,7 @@ ApexPost is a .NET 10 / C# 14 ASP.NET Core MVC counter platform for branch retai
 
 ## Requirements and run
 
-**Run order for the Week 4 API:** (1) create and seed the Week 3 database with steps 1 to 3 below, (2) set the API's secrets (the JWT signing key and a partner key, shown under Week 4 Part D), (3) start the API with `dotnet run --project ApexPost.Api --launch-profile https`, then open `https://localhost:7180/swagger`. The courier app comes after that (see Part D).
+**Run order for the Week 4 API:** (1) create the Week 3 database with steps 1 to 3 below, then run `ApexPost.Web` once (step 5) so it seeds the branches, because creating a shipment checks its origin branch against them (the migrations alone add no branches), (2) set the API's secrets (the JWT signing key and a partner key, shown under Week 4 Part D), (3) start the API with `dotnet run --project ApexPost.Api --launch-profile https`, then open `https://localhost:7180/swagger`. The courier app comes after that (see Part D).
 
 You need the .NET 10 SDK and a SQL Server you control. Free options include SQL Server Developer or Express, LocalDB on Windows, or the Developer image in Docker, plus SSMS. Docker Desktop itself needs a paid plan at larger companies. Never use a shared training database.
 
@@ -66,7 +66,7 @@ dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --sta
 dotnet test ApexPost.slnx
 ```
 
-This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), and the Week 4 projects `ApexPost.Courier.Offline.Tests` (97 tests that use an embedded database and need no server), `ApexPost.Api.Tests` (143 tests with no database, and 8 more reported as skipped) and `ApexPost.Courier.Core.Tests` (65 tests). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
+This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), and the Week 4 projects `ApexPost.Courier.Offline.Tests` (97 tests that use an embedded database and need no server), `ApexPost.Api.Tests` (144 tests with no database, and 8 more reported as skipped) and `ApexPost.Courier.Core.Tests` (65 tests). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
 
 ```bash
 APEXPOST_TEST_SQLSERVER="Server=localhost;User Id=<user>;Password=<password>;TrustServerCertificate=True" dotnet test ApexPost.slnx
@@ -201,7 +201,7 @@ sqlcmd -d ApexPostDb -Q "SELECT TOP (50) * FROM dbo.AuditEntries ORDER BY Timest
 
 ## Git workflow
 
-Use a short-lived feature branch for each coherent assignment change, push it, and open a pull request with a scope-specific title. Require a warning-free build and passing tests before merge, and never include user-secrets or runtime audit logs. The repository history contains merge commits for PRs `#1` and `#2`; continue the same reviewable workflow for later changes.
+Use a short-lived feature branch for each coherent assignment change, push it, and open a pull request with a scope-specific title. Require a warning-free build and passing tests before merge, and never include user-secrets or runtime audit logs. [`docs/GIT-HISTORY.md`](docs/GIT-HISTORY.md) lists the pull requests and their status.
 
 Example local sequence:
 
@@ -221,7 +221,7 @@ The evidence in `PERFORMANCE.md` was captured with `sqlcmd`. To repeat it in SSM
 3. In a third window, run the `sys.dm_exec_requests` query from step 3 of the first script, and take a screenshot.
 4. Run `ROLLBACK TRANSACTION` in the first window. The second window then finishes.
 
-Save the screenshot as `docs/screenshots/14-ssms-blocking.png`, and add it to the blocking section of `PERFORMANCE.md`. In `sqlcmd`, these scripts need `-I`, because the filtered index on `BranchStock` requires `QUOTED_IDENTIFIER ON`. SSMS turns it on by default.
+The `sqlcmd` output of the same demo is already in the blocking section of `PERFORMANCE.md`. In `sqlcmd`, these scripts need `-I`, because the filtered index on `BranchStock` requires `QUOTED_IDENTIFIER ON`. SSMS turns it on by default.
 
 ## Least-privilege login
 
@@ -332,7 +332,7 @@ dotnet run --project ApexPost.Client.Consumer
 
 It calls `https://localhost:7180`, so the development certificate must be trusted (`dotnet dev-certs https --trust`). The client never turns certificate checks off.
 
-Screenshots of Swagger UI for both versions and of the 201, 400 and 409 responses are in [`docs/week4-partC`](docs/week4-partC).
+Screenshots of Swagger UI for both versions, the Authorize dialog, and the 201, 400, 401 and 409 responses are in [`docs/week4-partC`](docs/week4-partC).
 
 ## Week 4 Part D: security and the courier app
 
@@ -348,14 +348,16 @@ dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 32)" --project 
 dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" "$(openssl rand -hex 24)" --project ApexPost.Api
 ```
 
-PowerShell versions of the two commands above (there is no `openssl` or `$(...)` on a plain Windows shell):
+PowerShell versions of the two commands above (there is no `openssl` or `$(...)` on a plain Windows shell). They use the cryptographic random number generator and work in both Windows PowerShell 5.1 and PowerShell 7:
 
 ```powershell
-dotnet user-secrets set "Jwt:SigningKey" ([Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))) --project ApexPost.Api
+$key = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($key)
+dotnet user-secrets set "Jwt:SigningKey" ([Convert]::ToBase64String($key)) --project ApexPost.Api
 ```
 
 ```powershell
-dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" (-join ((1..24) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })) --project ApexPost.Api
+$partner = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($partner)
+dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" (($partner | ForEach-Object { $_.ToString('x2') }) -join '') --project ApexPost.Api
 ```
 
 In Development only, and only because `appsettings.Development.json` sets `Jwt:AllowDevelopmentTokens`, `POST /dev/token` issues a test token to a caller on the same machine, for example `{"roles":["Courier"],"courierId":"CR-1001"}`. In Swagger UI, paste it into **Authorize**. [`ApexPost.Api/ApexPost.Api.http`](ApexPost.Api/ApexPost.Api.http) starts by requesting tokens, and ends with the 401, 403, invalid API key and valid token cases.
@@ -396,7 +398,7 @@ The API base URLs are in `ApexPost.Courier/appsettings.json`: `https://10.0.2.2:
 - `ApexPost.Infrastructure`: EF Core DbContext, configurations, migrations, repositories, query services, simulated courier service, cache, notifications.
 - `ApexPost.Web`: MVC controllers/views, authentication, middleware, filters, composition root.
 - `ApexPost.Test`: unit, model, MVC and SQL Server integration tests.
-- `ApexPost.Courier.Offline`: Week 4 Part A, the courier's offline store (see the section below). It does not reference any Week 3 project.
+- `ApexPost.Courier.Offline`: Week 4 Part A, the courier's offline store (see "Week 4 Part A" above). It does not reference any Week 3 project.
 - `ApexPost.Courier.Offline.Harness`: the console test harness for it.
 - `ApexPost.Courier.Offline.Tests`: its tests.
 - `ApexPost.Tracking`: Week 4 Part B, the shipment and scan domain and `ShipmentService`. It references the Week 3 Application project for `IBranchRepository`.

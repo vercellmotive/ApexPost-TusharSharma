@@ -6,8 +6,8 @@
 
 | Who | Credential | Routes | Configured in |
 |---|---|---|---|
-| Couriers and back-office staff | JWT bearer token (`Authorization: Bearer …`) | Every `/api/v1` and `/api/v2` shipment and scan route | `Security/ApiSecurity.cs` |
-| Partner systems | API key (`X-Api-Key: …`) | `GET /api/v2/partner/shipments/{trackingNumber}` only, read-only | `Security/PartnerEndpoints.cs`, `Security/PartnerApiKeyFilter.cs` |
+| Couriers and back-office staff | JWT bearer token (`Authorization: Bearer …`) | Every `/api/v1` and `/api/v2` shipment and scan route | `ApexPost.Api/Security/ApiSecurity.cs` |
+| Partner systems | API key (`X-Api-Key: …`) | `GET /api/v2/partner/shipments/{trackingNumber}` only, read-only | `ApexPost.Api/Security/PartnerEndpoints.cs`, `ApexPost.Api/Security/PartnerApiKeyFilter.cs` |
 
 **Token validation.** `AddAuthentication().AddJwtBearer()` checks four things on every token: the issuer (`Jwt:Issuer`), the audience (`Jwt:Audience`), the lifetime (`exp`, with 30 seconds of clock skew), and the HMAC-SHA256 signature (`Jwt:SigningKey`). Only HS256 is accepted, so a token cannot switch to another algorithm or to `none`. The issuer and audience are in `appsettings.json`. The signing key is a secret: it is read from user secrets and never committed. The app refuses to start if the key is missing or shorter than 32 bytes.
 

@@ -21,7 +21,7 @@ Delivery is at least once. If the app stops after an upload but before the scan 
 
 - The same id arriving twice is the same scan, and the server ignores the repeat.
 - A scan the server rejects stays Failed on the device for a person to review.
-- If office staff correct a scan on the server, the correction wins and the device takes the server's copy at its next pull.
+- If office staff corrected a scan on the server, the correction would win, and the device would take the server's copy when it next pulled from the server. Today the app only uploads, so this is how a future pull would behave.
 
 Last write wins is used only on the device, for fields the device alone owns. `UpdateSyncStatus` reads the latest copy, changes only the status, and saves with `FailOnConflict`, retrying if the document changed in between, so an edit made during an upload is kept. A full `Update` is last-write-wins because the caller supplies the whole scan.
 
@@ -31,4 +31,4 @@ Couchbase Lite is a library inside the app's own process, not a server. Its lock
 
 So the app uses one `CourierDatabase` per process and disposes it when finished, and the harness must not be pointed at a folder another program is using. Nothing in the code stops a second process from opening the folder. On a phone the operating system gives each app its own sandbox, so this does not arise. If several programs ever needed the same scans, one process would own the database and the others would call it, or all of them would sync through the server.
 
-Part D added one optional field, `recipientSignatureName`. It is written only on a Delivered scan that has a signature, because the server needs one for a delivery. Every other scan keeps exactly the seven fields above. The fake uploader is replaced in the app by the real API call (`ApiShipmentUploader`), which sends scans in batches of 20 when the device comes back online.
+Part D added one optional field, `recipientSignatureName`. It is written only on a Delivered scan that has a signature, because the server needs one for a delivery. Every other scan keeps exactly the seven fields from Part A: `trackingNumber`, `scanType`, `courierId`, `location`, `scannedAtUtc`, `notes` and `syncStatus`. The fake uploader is replaced in the app by the real API call (`ApiShipmentUploader`), which sends scans in batches of 20 when the device comes back online.
