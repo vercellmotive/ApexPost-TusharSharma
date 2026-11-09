@@ -17,7 +17,12 @@ public sealed partial class PhoneNumberAttribute()
     /// <summary>The most digits a phone number may have, the E.164 limit.</summary>
     public const int MaximumDigits = 15;
 
-    [GeneratedRegex(@"^\+?(?:[0-9]+|\([0-9]+\))(?:[ -]?(?:[0-9]+|\([0-9]+\)))*$", RegexOptions.CultureInvariant)]
+    /// <summary>The longest text checked. A longer value is refused without running the pattern.</summary>
+    public const int MaximumLength = 20;
+
+    // NonBacktracking matches in time proportional to the text, so a long string of digits ending in a bad
+    // character cannot make the pattern take exponential time.
+    [GeneratedRegex(@"^\+?(?:[0-9]+|\([0-9]+\))(?:[ -]?(?:[0-9]+|\([0-9]+\)))*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex Shape();
 
     /// <inheritdoc />
@@ -28,7 +33,7 @@ public sealed partial class PhoneNumberAttribute()
             return true;
         }
 
-        if (value is not string phone || !Shape().IsMatch(phone))
+        if (value is not string { Length: <= MaximumLength } phone || !Shape().IsMatch(phone))
         {
             return false;
         }

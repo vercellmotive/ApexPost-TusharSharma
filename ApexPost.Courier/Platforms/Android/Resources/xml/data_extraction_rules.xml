@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing is backed up to the cloud or copied to another device: the offline database holds scan locations and
+  signature names, and a restored SecureStorage token cannot be decrypted on a new device anyway.
+-->
+<data-extraction-rules>
+	<cloud-backup>
+		<exclude domain="root" />
+		<exclude domain="file" />
+		<exclude domain="database" />
+		<exclude domain="sharedpref" />
+		<exclude domain="external" />
+	</cloud-backup>
+	<device-transfer>
+		<exclude domain="root" />
+		<exclude domain="file" />
+		<exclude domain="database" />
+		<exclude domain="sharedpref" />
+		<exclude domain="external" />
+	</device-transfer>
+</data-extraction-rules>

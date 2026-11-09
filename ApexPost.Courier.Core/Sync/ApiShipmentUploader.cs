@@ -1,11 +1,13 @@
 using ApexPost.Courier.Core.Api;
 using ApexPost.Courier.Offline.Domain;
+using ApexPost.Courier.Offline.Sync;
 
 namespace ApexPost.Courier.Core.Sync;
 
 /// <summary>
 /// The real uploader that replaces Part A's FakeShipmentUploader. It sends scans through <see cref="ApexApiClient"/>
 /// and works in batches for <see cref="ScanSyncService"/>, and one scan at a time for the Part A OutboxService.
+/// A failure that may pass leaves the scan Pending: the outbox gets a <see cref="TransientUploadException"/>.
 /// </summary>
 public sealed class ApiShipmentUploader(ApexApiClient api) : IShipmentUploader
 {
@@ -14,9 +16,8 @@ public sealed class ApiShipmentUploader(ApexApiClient api) : IShipmentUploader
         var result = await UploadBatchAsync(scan.TrackingNumber, [scan], cancellationToken);
         if (!result.Succeeded)
         {
-            // Let the outbox decide: a transient failure is an exception it records as Failed for this run only.
             return result.IsTransient
-                ? throw new HttpRequestException(result.Message)
+                ? throw new TransientUploadException(result.Message ?? "The server could not be reached.")
                 : UploadResult.Failure(result.Message ?? "The server refused the scan.");
         }
 

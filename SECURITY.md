@@ -24,7 +24,13 @@ A courier may upload only scans recorded under their own `courierId` claim. `Shi
 
 **401 and 403.** A missing, invalid or expired token returns 401 ProblemDetails with a `WWW-Authenticate: Bearer` challenge, and the detail says which (for example "The access token has expired. Sign in again."). The wrong role returns 403 ProblemDetails. The token itself is never written to a response or a log. `SecurityTests` covers each case.
 
-**Development tokens.** In Development only, `POST /dev/token` issues a short-lived token signed with the same key:
+**Development tokens.** `POST /dev/token` issues a short-lived token signed with the same key, and anyone who could call it could become an Admin, so it is guarded three times and all three must hold:
+
+1. `ASPNETCORE_ENVIRONMENT` is Development. One wrong environment setting is not enough, because
+2. `Jwt:AllowDevelopmentTokens` must also be `true`. It is set only in `appsettings.Development.json`, so a Production deployment, or any deployment that copies `appsettings.json` alone, has no such route.
+3. The caller must be on the same machine (a loopback address). Anyone else gets a 404, as if the route did not exist.
+
+Setting the environment wrongly does expose the other Development features (Swagger UI, full error details, automatic migrations and seeding), so deployments must set the environment explicitly. `dotnet user-jwts` is the alternative the brief names, and it needs none of this: it keeps the signing key in user secrets and issues tokens with the .NET CLI.
 
 ```bash
 dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 32)" --project ApexPost.Api
@@ -34,7 +40,7 @@ dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 32)" --project 
 curl -k -X POST https://localhost:7180/dev/token -H "Content-Type: application/json" -d '{"roles":["Courier"],"courierId":"CR-1001"}'
 ```
 
-It is not mapped outside Development, and it is not in the OpenAPI documents. In Swagger UI, paste its `accessToken` into **Authorize → Bearer**, and every "Try it out" sends it.
+It is not mapped outside Development, and it is not in the OpenAPI documents. `SecurityTests` checks that production never issues a token, that the setting is needed, and that only loopback callers are served. In Swagger UI, paste its `accessToken` into **Authorize → Bearer**, and every "Try it out" sends it.
 
 ## Partner API keys
 
@@ -45,6 +51,14 @@ dotnet user-secrets set "PartnerApiKeys:Keys:DemoPartner" "$(openssl rand -hex 2
 ```
 
 `appsettings.json` holds an empty `Keys` object, so with no secrets configured every key fails. The endpoint filter compares SHA-256 hashes of the supplied key and each configured key with `CryptographicOperations.FixedTimeEquals`, and checks every key, so the time taken reveals nothing. Keys shorter than 32 characters are ignored. A missing or wrong key returns 401 ProblemDetails, and a bearer token does not help on this route. Only the partner's name is logged, never the key. The partner response leaves out the recipient's name, phone and address.
+
+## Rate limiting
+
+`UseRateLimiter()` runs before authentication, so a flood of bad tokens or keys is turned away cheaply. Two fixed one-minute windows per caller address, set in the `RateLimiting` section: 600 requests for any endpoint, and 30 for the partner route. The partner limit is checked before the API key, so repeated wrong keys are throttled too, and a key cannot walk through the sequential tracking numbers quickly. A refused request gets 429 ProblemDetails with a `Retry-After` header. `SecurityTests` covers both limits. Behind a reverse proxy, the caller address is the proxy's unless forwarded headers are configured, so production needs `UseForwardedHeaders` with the proxy listed, as in the Week 3 web app.
+
+## What a courier can see
+
+By design, any signed-in user, including a Courier, can read every shipment, with the recipient's name, phone and address, and a Courier can change the status of any shipment. The brief asks for exactly that, so it is how the API works. It is a known limit, not an oversight. To narrow it, assign each shipment to a courier (a `courierId` on the shipment), filter the list and reads for the Courier role by that claim, and check it in `ChangeStatusAsync` the way `UploadScansAsync` checks scans. The partner route already returns no personal data.
 
 ## OAuth 2.0 flows
 
@@ -85,10 +99,18 @@ A bearer token or an API key is a complete credential: whoever has it is the cou
 On a developer's machine the API uses the ASP.NET Core development certificate, which is issued to `localhost`. The Android emulator reaches the host as `10.0.2.2`, a name the certificate does not cover, and the emulator does not trust that certificate. So `ApexPost.Courier/Services/DevelopmentCertificate.cs` installs a certificate callback that:
 
 - exists only when `DEBUG` is defined, because the whole file and its registration in `MauiProgram` are inside `#if DEBUG`, so a Release build has no bypass;
-- accepts a certificate that fails normal checks only when the host is `localhost`, `127.0.0.1` or `10.0.2.2` **and** the certificate's subject is `CN=localhost`;
+- accepts a certificate that fails normal checks only when the host is `localhost`, `127.0.0.1` or `10.0.2.2` **and** the certificate's subject is `CN=localhost`. This does not pin one certificate: any self-signed certificate with that subject passes, which is acceptable only because it is Debug-only and for local hosts. To tighten it, compare the certificate's thumbprint with the one from `dotnet dev-certs https --check`;
 - leaves every other host, and every certificate that passes normal checks, to the platform's own validation.
 
 A Release build talks only to a production host with a certificate from a public authority, and never turns validation off. The NSwag console consumer and the test clients never bypass certificate checks.
+
+## Release builds of the app
+
+The "Get development token" button, the courier-id box, `LoginViewModel.RequestTokenAsync`, `ApexApiClient.RequestDevelopmentTokenAsync` and their DTOs exist only in Debug builds (`#if DEBUG`). A Release build has just the paste-a-token path, so it never ships a sign-in button that needs no password. The `DevelopmentCertificate` handler is likewise Debug-only.
+
+## Backup on Android
+
+`allowBackup` is `false`, with `data_extraction_rules.xml` excluding every domain from cloud backup and device transfer. The offline database holds scan locations and signature names unencrypted, and a SecureStorage token restored onto another device cannot be decrypted anyway. `SecureStorageTokenStore.GetAsync` also catches a failed decryption, forgets the value and returns no token, so the courier signs in again instead of the app failing.
 
 ## Token storage in the app
 

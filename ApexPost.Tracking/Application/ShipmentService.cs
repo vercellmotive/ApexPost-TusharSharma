@@ -220,7 +220,35 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
 
         // A scan that another upload stored in the meantime was skipped by the store, so it is a duplicate too.
         duplicates += fresh.Count - stored.Count;
+        await CloseDeliveryAsync(shipment, fresh.Where(scan => stored.Contains(scan.ScanId)).ToList(), now, ct);
         return ServiceResult<ScanUploadOutcome>.Success(new ScanUploadOutcome(stored.Count, duplicates, rejections));
+    }
+
+    /// <summary>
+    /// A Delivered or Failed scan from the courier closes a shipment that is out for delivery, so the shipment and its
+    /// scan history agree. It follows the normal status rules: only OutForDelivery can move to Delivered or Failed,
+    /// so a scan that arrives earlier in the journey changes nothing and the courier moves the status with PATCH.
+    /// </summary>
+    private async Task CloseDeliveryAsync(Shipment shipment, IReadOnlyList<TrackingScan> stored, DateTimeOffset now, CancellationToken ct)
+    {
+        var closing = stored
+            .Where(scan => scan.ScanType is ScanType.Delivered or ScanType.Failed)
+            .OrderBy(scan => scan.ScannedAtUtc)
+            .LastOrDefault();
+        if (closing is null || shipment.Status != ShipmentStatus.OutForDelivery)
+        {
+            return;
+        }
+
+        shipment.MoveTo(closing.ScanType == ScanType.Delivered ? ShipmentStatus.Delivered : ShipmentStatus.Failed, now);
+        try
+        {
+            await store.SaveChangesAsync(ct);
+        }
+        catch (ConcurrencyConflictException)
+        {
+            // Someone moved the shipment in the meantime. Their change stands, and the scans are already stored.
+        }
     }
 
     private static string? RejectionReason(IncomingScan scan, Shipment shipment, DateTimeOffset now)

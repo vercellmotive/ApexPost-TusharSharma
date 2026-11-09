@@ -10,32 +10,34 @@ public sealed class LoginPage : ContentPage
         Title = "Sign in";
         BindingContext = viewModel;
 
-        var courierId = new Entry { Placeholder = "Courier id, such as CR-1001" };
-        courierId.SetBinding(Entry.TextProperty, static (LoginViewModel vm) => vm.CourierId, BindingMode.TwoWay);
-
         var pasted = new Editor { Placeholder = "Or paste an access token", HeightRequest = 120 };
         pasted.SetBinding(Editor.TextProperty, static (LoginViewModel vm) => vm.PastedToken, BindingMode.TwoWay);
 
         var message = new Label { TextColor = Colors.Firebrick };
         message.SetBinding(Label.TextProperty, static (LoginViewModel vm) => vm.Message);
 
-        Content = new ScrollView
+        var form = new VerticalStackLayout
         {
-            Content = new VerticalStackLayout
+            Padding = 24,
+            Spacing = 12,
+            Children =
             {
-                Padding = 24,
-                Spacing = 12,
-                Children =
-                {
-                    new Label { Text = "ApexPost Courier", FontSize = 28, FontAttributes = FontAttributes.Bold },
-                    new Label { Text = "Development sign-in. A real identity provider replaces this; see SECURITY.md." },
-                    courierId,
-                    new Button { Text = "Get development token", Command = viewModel.RequestTokenCommand },
-                    pasted,
-                    new Button { Text = "Use pasted token", Command = viewModel.UsePastedTokenCommand },
-                    message,
-                },
+                new Label { Text = "ApexPost Courier", FontSize = 28, FontAttributes = FontAttributes.Bold },
+                new Label { Text = "Paste an access token. A real identity provider replaces this; see SECURITY.md." },
             },
         };
+
+#if DEBUG
+        // Debug builds only: ask the local API for a development token. A Release build has no such button.
+        var courierId = new Entry { Placeholder = "Courier id, such as CR-1001" };
+        courierId.SetBinding(Entry.TextProperty, static (LoginViewModel vm) => vm.CourierId, BindingMode.TwoWay);
+        form.Children.Add(courierId);
+        form.Children.Add(new Button { Text = "Get development token (Debug build)", Command = viewModel.RequestTokenCommand });
+#endif
+
+        form.Children.Add(pasted);
+        form.Children.Add(new Button { Text = "Use pasted token", Command = viewModel.UsePastedTokenCommand });
+        form.Children.Add(message);
+        Content = new ScrollView { Content = form };
     }
 }

@@ -138,6 +138,12 @@ public sealed class HarnessApp
         }
 
         // Saved on the device first, as Pending. Nothing is sent anywhere.
+        if (!System.Text.RegularExpressions.Regex.IsMatch(trackingNumber!.Trim(), @"^APX-\d{8}$", System.Text.RegularExpressions.RegexOptions.ECMAScript))
+        {
+            _output.WriteLine("Tracking numbers look like APX-12345678, the format the API accepts. Nothing was saved.");
+            return;
+        }
+
         var scan = ShipmentScan.CreatePending(trackingNumber!, scanType, courierId!, location!, _time.GetUtcNow(), notes);
         _repository.Create(scan);
         _output.WriteLine($"Saved {scan.Id} on this device as Pending.");

@@ -52,6 +52,7 @@ public sealed class SyncStatusPage : ContentPage
                     new Label { Text = "Circuit breaker", FontAttributes = FontAttributes.Bold },
                     circuit,
                     new Button { Text = "Sync now", Command = viewModel.SyncNowCommand },
+                    new Button { Text = "Retry failed scans", Command = viewModel.RetryFailedCommand },
                     new Label { Text = "Failures", FontAttributes = FontAttributes.Bold },
                     failures,
                     signOut,

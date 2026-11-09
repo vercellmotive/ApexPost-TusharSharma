@@ -1,3 +1,4 @@
+using ApexPost.Api.Security;
 using ApexPost.Courier.Core.Api;
 using ApexPost.Courier.Core.Auth;
 using ApexPost.Courier.Core.Resilience;
@@ -48,6 +49,8 @@ public sealed class CourierAppEndToEndTests : IDisposable
         _sync = new ScanSyncService(_scans, () => new ApiShipmentUploader(Client), _connectivity, _api.Clock, NullLogger<ScanSyncService>.Instance);
     }
 
+    private Task SignInAsync(string courierId) => _tokens.SetAsync(ApiFactory.Token([ApexPostRoles.Courier], courierId));
+
     private ApexApiClient Client => _app.GetRequiredService<ApexApiClient>();
 
     public void Dispose()
@@ -68,9 +71,9 @@ public sealed class CourierAppEndToEndTests : IDisposable
     [Fact]
     public async Task Scans_saved_offline_upload_by_themselves_on_reconnect_and_only_once()
     {
-        // Login: a development token for courier CR-1001, kept in the token store.
-        var navigator = new Navigator();
-        await new LoginViewModel(_tokens, Client, navigator) { CourierId = Make.CourierId }.RequestTokenAsync();
+        // Login: a token for courier CR-1001, pasted on the Login page and kept in the token store.
+        var login = new LoginViewModel(_tokens, Client, new Navigator()) { PastedToken = ApiFactory.Token([ApexPostRoles.Courier], Make.CourierId) };
+        await login.UsePastedTokenAsync();
         Assert.Equal(Make.CourierId, CourierIdentity.CourierIdFrom(_tokens.Token));
 
         // Airplane mode: 25 scans are saved on the device as Pending, and nothing reaches the server.
@@ -116,7 +119,7 @@ public sealed class CourierAppEndToEndTests : IDisposable
     [Fact]
     public async Task A_scan_the_server_refuses_is_marked_failed_with_the_reason()
     {
-        await new LoginViewModel(_tokens, Client, new Navigator()) { CourierId = Make.CourierId }.RequestTokenAsync();
+        await SignInAsync(Make.CourierId);
         var unknown = _scans.Create(OfflineScan.CreatePending("APX-99999999", OfflineScanType.Pickup, Make.CourierId, "Depot", _api.Clock.GetUtcNow()));
 
         var report = await _sync.SyncPendingAsync();
@@ -128,7 +131,7 @@ public sealed class CourierAppEndToEndTests : IDisposable
     [Fact]
     public async Task Another_couriers_token_cannot_upload_this_couriers_scans()
     {
-        await new LoginViewModel(_tokens, Client, new Navigator()) { CourierId = "CR-2002" }.RequestTokenAsync();
+        await SignInAsync("CR-2002");
         var scan = _scans.Create(OfflineScan.CreatePending("APX-10000001", OfflineScanType.Pickup, Make.CourierId, "Depot", _api.Clock.GetUtcNow()));
 
         var report = await _sync.SyncPendingAsync();

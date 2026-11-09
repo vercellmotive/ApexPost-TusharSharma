@@ -5,6 +5,8 @@ namespace ApexPost.Courier.Offline.Sync;
 /// <summary>
 /// The outbox. Scans are saved locally as Pending first; this service reads the Pending ones, hands each to the
 /// uploader and records the answer as Synced or Failed. In Part A the uploader is a fake. In Part D it is the real API call.
+/// An uploader that cannot reach the server throws <see cref="TransientUploadException"/>: the scan stays Pending and
+/// the run stops, since the next scans would fail the same way.
 /// </summary>
 /// <remarks>
 /// Delivery is at least once: if the app stops after an upload but before the scan is marked Synced, the scan is
@@ -17,6 +19,7 @@ public sealed class OutboxService(IScanRepository repository, IShipmentUploader 
         var synced = new List<string>();
         var failures = new List<OutboxFailure>();
         var skipped = new List<string>();
+        var deferred = new List<string>();
 
         foreach (var scan in repository.FindPending())
         {
@@ -31,6 +34,11 @@ public sealed class OutboxService(IScanRepository repository, IShipmentUploader 
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 throw;
+            }
+            catch (TransientUploadException)
+            {
+                deferred.AddRange(repository.FindPending().Select(pending => pending.Id));
+                break;
             }
             catch (Exception exception)
             {
@@ -54,6 +62,6 @@ public sealed class OutboxService(IScanRepository repository, IShipmentUploader 
             }
         }
 
-        return new OutboxResult(synced, failures, skipped);
+        return new OutboxResult(synced, failures, skipped, deferred);
     }
 }

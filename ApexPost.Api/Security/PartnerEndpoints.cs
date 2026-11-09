@@ -13,6 +13,7 @@ internal static class PartnerEndpoints
         partner.MapGet("/api/v{version:apiVersion}/partner/shipments/{trackingNumber:trackingNumber}", GetShipmentAsync)
             .HasApiVersion(new ApiVersion(2, 0))
             .AllowAnonymous()
+            .RequireRateLimiting(RateLimiting.PartnerPolicy)
             .AddEndpointFilter<PartnerApiKeyFilter>()
             .WithName("GetPartnerShipment")
             .WithTags("Partner")

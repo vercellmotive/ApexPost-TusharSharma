@@ -105,15 +105,23 @@ public sealed class ResilienceTests : IDisposable
         Assert.Contains("overall timeout", harness.Logs.All);
     }
 
+    [Theory]
+    [InlineData("GET", true)]
+    [InlineData("PUT", true)]
+    [InlineData("DELETE", true)]
+    [InlineData("HEAD", true)]
+    [InlineData("POST", false)]
+    [InlineData("PATCH", false)]
+    public void Only_idempotent_requests_may_be_retried(string method, bool expected) =>
+        Assert.Equal(expected, ApexResilience.IsIdempotent(new HttpRequestMessage(new HttpMethod(method), "https://api.test/x")));
+
     [Fact]
-    public async Task A_post_that_is_not_idempotent_is_not_retried()
+    public void A_post_marked_idempotent_may_be_retried()
     {
-        _harness.Server.Then(HttpStatusCode.ServiceUnavailable).Then(HttpStatusCode.OK, """{"accessToken":"x","expiresAtUtc":"2026-11-09T01:00:00Z"}""");
+        var upload = new HttpRequestMessage(HttpMethod.Post, "https://api.test/x");
+        upload.Options.Set(ApexApiClient.Idempotent, true);
 
-        var result = await _harness.Client.RequestDevelopmentTokenAsync("CR-1001");
-
-        Assert.Equal(ApiFailureKind.ServerError, result.Failure);
-        Assert.Equal(1, _harness.Server.Calls);
+        Assert.True(ApexResilience.IsIdempotent(upload));
     }
 
     [Fact]

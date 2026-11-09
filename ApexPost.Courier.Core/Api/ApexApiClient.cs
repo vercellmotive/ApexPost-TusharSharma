@@ -41,7 +41,8 @@ public sealed class ApexApiClient(HttpClient http, ILogger<ApexApiClient> logger
         return SendAsync(request, ApexJson.Context.ScanUploadResponseDto, ct);
     }
 
-    /// <summary>Asks the API's Development-only /dev/token endpoint for a courier token.</summary>
+#if DEBUG
+    /// <summary>Debug builds only: asks the API's Development-only /dev/token endpoint for a courier token.</summary>
     public Task<ApiResult<DevelopmentTokenResponseDto>> RequestDevelopmentTokenAsync(string courierId, CancellationToken ct = default)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "dev/token")
@@ -50,6 +51,7 @@ public sealed class ApexApiClient(HttpClient http, ILogger<ApexApiClient> logger
         };
         return SendAsync(request, ApexJson.Context.DevelopmentTokenResponseDto, ct);
     }
+#endif
 
     private async Task<ApiResult<T>> SendAsync<T>(HttpRequestMessage request, JsonTypeInfo<T> type, CancellationToken ct)
     {

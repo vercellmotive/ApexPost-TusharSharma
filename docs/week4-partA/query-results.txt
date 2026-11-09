@@ -1,4 +1,4 @@
-2026-11-2 05:53:13.055+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+2026-11-9 01:05:40.426+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
 
 === ApexPost courier offline harness ===
 Database : apexpost_courier  (/tmp/apexpost-demo-a/apexpost_courier.cblite2/)
@@ -12,13 +12,13 @@ Pending  : 0 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 1
-Tracking number: APX-2026-001
+Tracking number: APX-20260001
 Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
 Courier ID: C-1001
 Location: Sydney NSW
 Notes (optional): Picked up at depot
-Saved scan::8bb328d8-0327-4b2c-aea6-6dd90602f3e9 on this device as Pending.
-  12:23:15.954 [listener] changed: scan::8bb328d8-0327-4b2c-aea6-6dd90602f3e9
+Saved scan::c9a977c5-46c9-4b89-ac25-c482dce80f89 on this device as Pending.
+  07:35:42.810 [listener] changed: scan::c9a977c5-46c9-4b89-ac25-c482dce80f89
   [pending] 1 scan(s) waiting to sync
 Courier C-1001 has 1 scan(s): Pickup 1, InTransit 0, Delivered 0, Failed 0.
 
@@ -34,13 +34,13 @@ Pending  : 1 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 1
-Tracking number: APX-2026-001
+Tracking number: APX-20260001
 Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 2
 Courier ID: C-1001
 Location: Parramatta NSW
 Notes (optional): Loaded on van 12
-Saved scan::da289499-406a-41b6-9f9f-d2bf33ee23fc on this device as Pending.
-  12:23:18.763 [listener] changed: scan::da289499-406a-41b6-9f9f-d2bf33ee23fc
+Saved scan::8a8a84dd-2c1d-4c95-a9e2-89d4285fb0ee on this device as Pending.
+  07:35:45.608 [listener] changed: scan::8a8a84dd-2c1d-4c95-a9e2-89d4285fb0ee
 Courier C-1001 has 2 scan(s): Pickup 1, InTransit 1, Delivered 0, Failed 0.
   [pending] 2 scan(s) waiting to sync
 
@@ -56,13 +56,13 @@ Pending  : 2 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 1
-Tracking number: APX-2026-002
+Tracking number: APX-20260002
 Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
 Courier ID: C-1001
 Location: Sydney NSW
 Notes (optional): [fail] torn label
-Saved scan::e71aa35f-12c5-4a1a-9276-e47e41127d3c on this device as Pending.
-  12:23:21.588 [listener] changed: scan::e71aa35f-12c5-4a1a-9276-e47e41127d3c
+Saved scan::eb425776-790d-4823-9af4-2c0b2161a7dc on this device as Pending.
+  07:35:48.449 [listener] changed: scan::eb425776-790d-4823-9af4-2c0b2161a7dc
 Courier C-1001 has 3 scan(s): Pickup 2, InTransit 1, Delivered 0, Failed 0.
   [pending] 3 scan(s) waiting to sync
 
@@ -78,14 +78,14 @@ Pending  : 3 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 1
-Tracking number: APX-2026-001
+Tracking number: APX-20260001
 Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 3
 Courier ID: C-1001
 Location: Penrith NSW
 Notes (optional): Left with neighbour
-Saved scan::a4c053fb-e727-489e-9de2-071a51fc2642 on this device as Pending.
-  12:23:24.423 [listener] changed: scan::a4c053fb-e727-489e-9de2-071a51fc2642
+Saved scan::e8aeda97-42e6-4e26-b78a-e499c7027b38 on this device as Pending.
 Courier C-1001 has 4 scan(s): Pickup 2, InTransit 1, Delivered 1, Failed 0.
+  07:35:51.280 [listener] changed: scan::e8aeda97-42e6-4e26-b78a-e499c7027b38
   [pending] 4 scan(s) waiting to sync
 
 === ApexPost courier offline harness ===
@@ -100,14 +100,14 @@ Pending  : 4 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 1
-Tracking number: APX-2026-003
+Tracking number: APX-20260003
 Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
 Courier ID: C-2002
 Location: Melbourne VIC
 Notes (optional): 
-Saved scan::b4e925df-0834-47c4-a33a-4ff1eb8d6691 on this device as Pending.
+Saved scan::24ea9523-6c38-45c3-9e94-8dc2e2361901 on this device as Pending.
+  07:35:54.118 [listener] changed: scan::24ea9523-6c38-45c3-9e94-8dc2e2361901
 Courier C-2002 has 1 scan(s): Pickup 1, InTransit 0, Delivered 0, Failed 0.
-  12:23:27.239 [listener] changed: scan::b4e925df-0834-47c4-a33a-4ff1eb8d6691
   [pending] 5 scan(s) waiting to sync
 
 === ApexPost courier offline harness ===
@@ -122,11 +122,11 @@ Pending  : 5 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 2
-Tracking number: APX-2026-001
-3 scan(s) for APX-2026-001, oldest first:
-  2026-11-02 12:23:15 UTC  APX-2026-001   Pickup    C-1001   Sydney NSW       [Pending]  scan::8bb328d8-0327-4b2c-aea6-6dd90602f3e9  note: Picked up at depot
-  2026-11-02 12:23:18 UTC  APX-2026-001   InTransit C-1001   Parramatta NSW   [Pending]  scan::da289499-406a-41b6-9f9f-d2bf33ee23fc  note: Loaded on van 12
-  2026-11-02 12:23:24 UTC  APX-2026-001   Delivered C-1001   Penrith NSW      [Pending]  scan::a4c053fb-e727-489e-9de2-071a51fc2642  note: Left with neighbour
+Tracking number: APX-20260001
+3 scan(s) for APX-20260001, oldest first:
+  2026-11-09 07:35:42 UTC  APX-20260001   Pickup    C-1001   Sydney NSW       [Pending]  scan::c9a977c5-46c9-4b89-ac25-c482dce80f89  note: Picked up at depot
+  2026-11-09 07:35:45 UTC  APX-20260001   InTransit C-1001   Parramatta NSW   [Pending]  scan::8a8a84dd-2c1d-4c95-a9e2-89d4285fb0ee  note: Loaded on van 12
+  2026-11-09 07:35:51 UTC  APX-20260001   Delivered C-1001   Penrith NSW      [Pending]  scan::e8aeda97-42e6-4e26-b78a-e499c7027b38  note: Left with neighbour
 
 === ApexPost courier offline harness ===
 Database : apexpost_courier  (/tmp/apexpost-demo-a/apexpost_courier.cblite2/)
@@ -141,11 +141,11 @@ Pending  : 5 scan(s) waiting to sync
   6) Exit
 Choose an option (1-6): 3
 5 scan(s) waiting to sync, oldest first:
-  2026-11-02 12:23:15 UTC  APX-2026-001   Pickup    C-1001   Sydney NSW       [Pending]  scan::8bb328d8-0327-4b2c-aea6-6dd90602f3e9  note: Picked up at depot
-  2026-11-02 12:23:18 UTC  APX-2026-001   InTransit C-1001   Parramatta NSW   [Pending]  scan::da289499-406a-41b6-9f9f-d2bf33ee23fc  note: Loaded on van 12
-  2026-11-02 12:23:21 UTC  APX-2026-002   Pickup    C-1001   Sydney NSW       [Pending]  scan::e71aa35f-12c5-4a1a-9276-e47e41127d3c  note: [fail] torn label
-  2026-11-02 12:23:24 UTC  APX-2026-001   Delivered C-1001   Penrith NSW      [Pending]  scan::a4c053fb-e727-489e-9de2-071a51fc2642  note: Left with neighbour
-  2026-11-02 12:23:27 UTC  APX-2026-003   Pickup    C-2002   Melbourne VIC    [Pending]  scan::b4e925df-0834-47c4-a33a-4ff1eb8d6691
+  2026-11-09 07:35:42 UTC  APX-20260001   Pickup    C-1001   Sydney NSW       [Pending]  scan::c9a977c5-46c9-4b89-ac25-c482dce80f89  note: Picked up at depot
+  2026-11-09 07:35:45 UTC  APX-20260001   InTransit C-1001   Parramatta NSW   [Pending]  scan::8a8a84dd-2c1d-4c95-a9e2-89d4285fb0ee  note: Loaded on van 12
+  2026-11-09 07:35:48 UTC  APX-20260002   Pickup    C-1001   Sydney NSW       [Pending]  scan::eb425776-790d-4823-9af4-2c0b2161a7dc  note: [fail] torn label
+  2026-11-09 07:35:51 UTC  APX-20260001   Delivered C-1001   Penrith NSW      [Pending]  scan::e8aeda97-42e6-4e26-b78a-e499c7027b38  note: Left with neighbour
+  2026-11-09 07:35:54 UTC  APX-20260003   Pickup    C-2002   Melbourne VIC    [Pending]  scan::24ea9523-6c38-45c3-9e94-8dc2e2361901
 
 === ApexPost courier offline harness ===
 Database : apexpost_courier  (/tmp/apexpost-demo-a/apexpost_courier.cblite2/)
@@ -160,21 +160,19 @@ Pending  : 5 scan(s) waiting to sync
   6) Exit
 Choose an option (1-6): 4
 Sending pending scans to the fake server...
-  12:23:30.622 [listener] changed: scan::8bb328d8-0327-4b2c-aea6-6dd90602f3e9
+  07:35:57.496 [listener] changed: scan::c9a977c5-46c9-4b89-ac25-c482dce80f89
   [pending] 4 scan(s) waiting to sync
-  12:23:30.623 [listener] changed: scan::da289499-406a-41b6-9f9f-d2bf33ee23fc
-  Synced   scan::8bb328d8-0327-4b2c-aea6-6dd90602f3e9
-  Synced   scan::da289499-406a-41b6-9f9f-d2bf33ee23fc
-  Synced   scan::a4c053fb-e727-489e-9de2-071a51fc2642
-  Synced   scan::b4e925df-0834-47c4-a33a-4ff1eb8d6691
+  07:35:57.497 [listener] changed: scan::8a8a84dd-2c1d-4c95-a9e2-89d4285fb0ee
+  [pending] 3 scan(s) waiting to sync
+  07:35:57.499 [listener] changed: scan::eb425776-790d-4823-9af4-2c0b2161a7dc
+  Synced   scan::c9a977c5-46c9-4b89-ac25-c482dce80f89
+  Synced   scan::8a8a84dd-2c1d-4c95-a9e2-89d4285fb0ee
   [pending] 1 scan(s) waiting to sync
-  Failed   scan::e71aa35f-12c5-4a1a-9276-e47e41127d3c  (The fake server rejected the scan because its notes contain [fail].)
+  Synced   scan::e8aeda97-42e6-4e26-b78a-e499c7027b38
+  Synced   scan::24ea9523-6c38-45c3-9e94-8dc2e2361901
+  Failed   scan::eb425776-790d-4823-9af4-2c0b2161a7dc  (The fake server rejected the scan because its notes contain [fail].)
 Done: 4 synced, 1 failed, 0 skipped.
-  12:23:30.624 [listener] changed: scan::e71aa35f-12c5-4a1a-9276-e47e41127d3c
-  [pending] 0 scan(s) waiting to sync
-  12:23:30.625 [listener] changed: scan::a4c053fb-e727-489e-9de2-071a51fc2642
-  [pending] 0 scan(s) waiting to sync
-  12:23:30.625 [listener] changed: scan::b4e925df-0834-47c4-a33a-4ff1eb8d6691
+  07:35:57.499 [listener] changed: scan::e8aeda97-42e6-4e26-b78a-e499c7027b38, scan::24ea9523-6c38-45c3-9e94-8dc2e2361901
   [pending] 0 scan(s) waiting to sync
 
 === ApexPost courier offline harness ===
@@ -203,9 +201,9 @@ Pending  : 0 scan(s) waiting to sync
   5) Delete Scan
   6) Exit
 Choose an option (1-6): 2
-Tracking number: APX-2026-002
-1 scan(s) for APX-2026-002, oldest first:
-  2026-11-02 12:23:21 UTC  APX-2026-002   Pickup    C-1001   Sydney NSW       [Failed]  scan::e71aa35f-12c5-4a1a-9276-e47e41127d3c  note: [fail] torn label
+Tracking number: APX-20260002
+1 scan(s) for APX-20260002, oldest first:
+  2026-11-09 07:35:48 UTC  APX-20260002   Pickup    C-1001   Sydney NSW       [Failed]  scan::eb425776-790d-4823-9af4-2c0b2161a7dc  note: [fail] torn label
 
 === ApexPost courier offline harness ===
 Database : apexpost_courier  (/tmp/apexpost-demo-a/apexpost_courier.cblite2/)

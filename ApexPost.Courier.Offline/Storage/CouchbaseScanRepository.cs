@@ -135,7 +135,7 @@ public sealed class CouchbaseScanRepository(CourierDatabase database) : IScanRep
     /// </summary>
     public IReadOnlyList<QueryPlan> ExplainQueries() =>
     [
-        Explain("All scans for a tracking number", ScanQueries.ByTrackingNumber, ScanQueries.TrackingNumberParameter, "APX-2026-001"),
+        Explain("All scans for a tracking number", ScanQueries.ByTrackingNumber, ScanQueries.TrackingNumberParameter, "APX-20260001"),
         Explain("All scans where syncStatus = Pending", ScanQueries.ByStatus, ScanQueries.StatusParameter, nameof(SyncStatus.Pending)),
         Explain("Number of scans per scanType for one courier", ScanQueries.CountByScanType, ScanQueries.CourierParameter, "C-1001"),
         Explain("Number of pending scans", ScanQueries.CountByStatus, ScanQueries.StatusParameter, nameof(SyncStatus.Pending))

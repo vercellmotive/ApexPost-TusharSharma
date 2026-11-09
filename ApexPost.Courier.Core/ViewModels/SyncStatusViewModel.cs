@@ -21,6 +21,11 @@ public sealed class SyncStatusViewModel : ObservableObject, IDisposable
         _connectivity = connectivity;
         _dispatcher = dispatcher;
         SyncNowCommand = new AsyncCommand(async () => await _sync.SyncPendingAsync());
+        RetryFailedCommand = new AsyncCommand(async () =>
+        {
+            Failures.Clear();
+            await _sync.RetryFailedAsync();
+        });
         _sync.Completed += OnCompleted;
         _circuit.Changed += OnCircuitChanged;
         _connectivity.ConnectivityChanged += OnConnectivityChanged;
@@ -28,6 +33,9 @@ public sealed class SyncStatusViewModel : ObservableObject, IDisposable
     }
 
     public AsyncCommand SyncNowCommand { get; }
+
+    /// <summary>Sends the scans the server refused again, after the cause is fixed.</summary>
+    public AsyncCommand RetryFailedCommand { get; }
 
     /// <summary>Shown while the circuit is open or the device is offline. Scans are still saved on the device.</summary>
     public bool ShowOfflineBanner => _circuit.IsOpen || !_connectivity.IsOnline;

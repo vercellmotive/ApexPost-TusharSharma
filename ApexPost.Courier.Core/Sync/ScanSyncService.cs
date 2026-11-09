@@ -80,6 +80,7 @@ public sealed class ScanSyncService : IDisposable
         var synced = 0;
         var failures = new List<SyncFailure>();
         var handled = 0;
+        var leftOut = 0;
         string? stopReason = null;
 
         foreach (var batch in pending.Chunk(BatchSize))
@@ -98,6 +99,12 @@ public sealed class ScanSyncService : IDisposable
                         {
                             MarkFailed(scan, reason, failures);
                         }
+                        else if (WasChangedSince(scan))
+                        {
+                            // Edited or deleted while it was uploading: what the server has is not what the device
+                            // has now, so it is not marked Synced. An edited scan stays Pending and goes up again.
+                            leftOut++;
+                        }
                         else
                         {
                             // Accepted now, or a duplicate the server already had from an earlier attempt.
@@ -111,7 +118,7 @@ public sealed class ScanSyncService : IDisposable
                     // The scans are fine; the server or the sign-in is not. Keep them Pending and stop this run.
                     stopReason = result.Message;
                     _logger.LogWarning("Sync stopped: {Reason}", result.Message);
-                    return Report(synced, failures, pending.Count - handled, stopReason);
+                    return Report(synced, failures, pending.Count - handled + leftOut, stopReason);
                 }
                 else
                 {
@@ -126,8 +133,25 @@ public sealed class ScanSyncService : IDisposable
             }
         }
 
-        return Report(synced, failures, pending.Count - handled, stopReason);
+        return Report(synced, failures, leftOut, stopReason);
     }
+
+    /// <summary>
+    /// Moves every Failed scan back to Pending and uploads again. A scan fails when the server refuses it, for
+    /// example because a back-office user had not created the shipment yet, and the courier can send it again.
+    /// </summary>
+    public async Task<SyncReport> RetryFailedAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var scan in _scans.GetAll().Where(scan => scan.SyncStatus == DomainSyncStatus.Failed))
+        {
+            _scans.UpdateSyncStatus(scan.Id, DomainSyncStatus.Pending);
+        }
+
+        return await SyncPendingAsync(cancellationToken);
+    }
+
+    private bool WasChangedSince(ShipmentScan uploaded) =>
+        _scans.Get(uploaded.Id) is not { } current || current != uploaded;
 
     private void MarkFailed(ShipmentScan scan, string reason, List<SyncFailure> failures)
     {

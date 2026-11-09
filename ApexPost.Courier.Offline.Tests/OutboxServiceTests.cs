@@ -26,6 +26,33 @@ public class OutboxServiceTests
     }
 
     [Fact]
+    public async Task AnUploaderThatCannotReachTheServer_LeavesEveryScanPending_AndStopsTheRun()
+    {
+        using var db = new TestCourierDatabase();
+        var first = db.Repository.Create(Scans.Make("APX-00000001"));
+        var second = db.Repository.Create(Scans.Make("APX-00000002"));
+        var outbox = new OutboxService(db.Repository, new Unreachable());
+
+        var result = await outbox.SyncPendingAsync();
+
+        Assert.Equal((0, 0, 2), (result.Synced, result.Failed, result.Deferred));
+        Assert.Equal(SyncStatus.Pending, db.Repository.Get(first.Id)!.SyncStatus);
+        Assert.Equal(SyncStatus.Pending, db.Repository.Get(second.Id)!.SyncStatus);
+        Assert.Equal(1, Unreachable.Calls);
+    }
+
+    private sealed class Unreachable : IShipmentUploader
+    {
+        public static int Calls { get; private set; }
+
+        public Task<UploadResult> UploadAsync(ShipmentScan scan, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            throw new TransientUploadException("No network.");
+        }
+    }
+
+    [Fact]
     public async Task ARejectedScan_IsMarkedFailed_WithTheReason()
     {
         using var db = new TestCourierDatabase();
