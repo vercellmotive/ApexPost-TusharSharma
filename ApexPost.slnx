@@ -1,5 +1,8 @@
 <Solution>
   <Project Path="ApexPost.Application/ApexPost.Application.csproj" Id="4a52217c-2061-4383-9dc9-0f251654b342" />
+  <Project Path="ApexPost.Courier.Offline.Harness/ApexPost.Courier.Offline.Harness.csproj" Id="5b1c3f0e-6d2a-4c58-9a47-1e0f6a8b7c21" />
+  <Project Path="ApexPost.Courier.Offline.Tests/ApexPost.Courier.Offline.Tests.csproj" Id="9e4a7d13-5c82-4f6b-b0a1-3d7e2c8f5a64" />
+  <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" Id="c7d4e8a2-3f19-4b60-8e75-2a9b5d1c4f38" />
   <Project Path="ApexPost.Domain/ApexPost.Domain.csproj" Id="32533460-ddb5-4637-b1ce-3c3e393bef31" />
   <Project Path="ApexPost.Infrastructure/ApexPost.Infrastructure.csproj" Id="a716d65a-ac2f-42ef-82df-05435f705a88" />
   <Project Path="ApexPost.Test/ApexPost.Test.csproj" Id="5191b9b6-f575-4dcf-809d-e4be9d488b23" />

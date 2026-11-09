@@ -64,7 +64,7 @@ dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --sta
 dotnet test ApexPost.slnx
 ```
 
-This runs 181 tests with no database and reports 28 as skipped. To run those too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
+This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped) and the Week 4 project `ApexPost.Courier.Offline.Tests` (95 tests that use an embedded database and need no server). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
 
 ```bash
 APEXPOST_TEST_SQLSERVER="Server=localhost;User Id=<user>;Password=<password>;TrustServerCertificate=True" dotnet test ApexPost.slnx
@@ -241,6 +241,33 @@ Run the app under a restricted login rather than `sa`. Create the login and its 
 
 `DatabaseSeeder` adds the operational rows once, and migrations add reference data. Its source files in `ApexPost.Infrastructure/Data` hold five branches, twenty staff, thirty products and 150 stock rows, and it generates over 200 transactions deterministically, including voids and refunds.
 
+## Week 4 Part A: the courier's offline store
+
+Couriers lose network coverage but must still record pickups and deliveries, so `ApexPost.Courier.Offline` keeps shipment scans on the device in an embedded [Couchbase Lite](https://www.couchbase.com/products/lite/) database named `apexpost_courier`. It uses the free Community Edition NuGet package `Couchbase.Lite` 4.1.2. Couchbase Server and Sync Gateway are not needed, and the Week 3 SQL Server code is untouched. The design reasons are in [`OFFLINE-DESIGN.md`](OFFLINE-DESIGN.md).
+
+| Part | Where |
+|---|---|
+| Scan model, `IScanRepository`, `IShipmentUploader` (no Couchbase types) | `ApexPost.Courier.Offline/Domain` |
+| `CourierDatabase` (opens the database, creates the indexes, listens for changes), `CouchbaseScanRepository`, the SQL++ text | `ApexPost.Courier.Offline/Storage` |
+| `OutboxService` and the fake uploader | `ApexPost.Courier.Offline/Sync` |
+
+Run the harness. The database goes in your local application data folder (`~/.local/share/ApexPost/courier` on macOS and Linux) unless you pass `--data <folder>`:
+
+```bash
+dotnet run --project ApexPost.Courier.Offline.Harness
+dotnet run --project ApexPost.Courier.Offline.Harness -- --explain
+```
+
+The menu is Add Scan, Find by Tracking Number, List Pending, Simulate Sync, Delete Scan and Exit. A new scan is always saved on the device as Pending. Simulate Sync runs the outbox against a fake server, which rejects a scan whose notes contain `[fail]`, so you can see the Failed outcome. The change listener prints the ids of changed documents and a live pending count. Use one program at a time on a data folder (see the design note).
+
+The tests need no network and no server. They open a real embedded database in a temporary folder:
+
+```bash
+dotnet test ApexPost.Courier.Offline.Tests
+```
+
+Screenshots of the query results and the listener log, and the query plans, are in [`docs/week4-partA`](docs/week4-partA).
+
 ## Solution layout
 
 - `ApexPost.Domain`: entities, rules, events, enums, value objects. It references nothing.
@@ -248,5 +275,8 @@ Run the app under a restricted login rather than `sa`. Create the login and its 
 - `ApexPost.Infrastructure`: EF Core DbContext, configurations, migrations, repositories, query services, simulated courier service, cache, notifications.
 - `ApexPost.Web`: MVC controllers/views, authentication, middleware, filters, composition root.
 - `ApexPost.Test`: unit, model, MVC and SQL Server integration tests.
+- `ApexPost.Courier.Offline`: Week 4 Part A, the courier's offline store (see the section below). It does not reference any Week 3 project.
+- `ApexPost.Courier.Offline.Harness`: the console test harness for it.
+- `ApexPost.Courier.Offline.Tests`: its tests.
 
 See `DESIGN.md` for the architecture and ER diagrams, middleware sequence, filters, ADRs and security decisions, and `PERFORMANCE.md` for index evidence.

@@ -1,0 +1,132 @@
+2026-11-2 05:53:35.779+05:30 [1]| INFO)  [Database] (Startup) [1] CouchbaseLite/4.1.2 (.NET; macOS 26.5.1) Build/2 LiteCore/4.1.2 (5)
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-demo-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-2026-010
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: C-1001
+Location: Sydney NSW
+Notes (optional): 
+Saved scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad on this device as Pending.
+  12:23:38.689 [listener] changed: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+  [pending] 1 scan(s) waiting to sync
+Courier C-1001 has 1 scan(s): Pickup 1, InTransit 0, Delivered 0, Failed 0.
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-demo-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 1 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-2026-010
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 2
+Courier ID: C-1001
+Location: Parramatta NSW
+Notes (optional): 
+Saved scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14 on this device as Pending.
+  12:23:40.382 [listener] changed: scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14
+Courier C-1001 has 2 scan(s): Pickup 1, InTransit 1, Delivered 0, Failed 0.
+  [pending] 2 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-demo-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 2 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 1
+Tracking number: APX-2026-011
+Scan type (1=Pickup, 2=InTransit, 3=Delivered, 4=Failed): 1
+Courier ID: C-1001
+Location: Sydney NSW
+Notes (optional): [fail] torn label
+Saved scan::64265bb9-bb5f-4f96-814b-07e1382e0504 on this device as Pending.
+Courier C-1001 has 3 scan(s): Pickup 2, InTransit 1, Delivered 0, Failed 0.
+  12:23:42.114 [listener] changed: scan::64265bb9-bb5f-4f96-814b-07e1382e0504
+  [pending] 3 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-demo-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 3 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 4
+Sending pending scans to the fake server...
+  12:23:43.426 [listener] changed: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+  [pending] 2 scan(s) waiting to sync
+  Synced   scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+  Synced   scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14
+  Failed   scan::64265bb9-bb5f-4f96-814b-07e1382e0504  (The fake server rejected the scan because its notes contain [fail].)
+Done: 2 synced, 1 failed, 0 skipped.
+  12:23:43.427 [listener] changed: scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14, scan::64265bb9-bb5f-4f96-814b-07e1382e0504
+  [pending] 0 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-demo-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 5
+3 scan(s) on this device:
+  2026-11-02 12:23:38 UTC  APX-2026-010   Pickup    C-1001   Sydney NSW       [Synced]  scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+  2026-11-02 12:23:40 UTC  APX-2026-010   InTransit C-1001   Parramatta NSW   [Synced]  scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14
+  2026-11-02 12:23:42 UTC  APX-2026-011   Pickup    C-1001   Sydney NSW       [Failed]  scan::64265bb9-bb5f-4f96-814b-07e1382e0504  note: [fail] torn label
+Scan ID to delete: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+Deleted scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad.
+  12:23:45.177 [listener] changed: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+  [pending] 0 scan(s) waiting to sync
+
+=== ApexPost courier offline harness ===
+Database : apexpost_courier  (/tmp/apexpost-demo-b/apexpost_courier.cblite2/)
+Network  : not used, everything works offline
+Tip      : a note containing [fail] makes the fake server reject that scan
+Pending  : 0 scan(s) waiting to sync
+  1) Add Scan
+  2) Find by Tracking Number
+  3) List Pending
+  4) Simulate Sync
+  5) Delete Scan
+  6) Exit
+Choose an option (1-6): 6
+Closing the database. Goodbye.
+
+--- contents of listener.log in the data folder ---
+12:23:38.689 [listener] changed: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+12:23:40.382 [listener] changed: scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14
+12:23:42.114 [listener] changed: scan::64265bb9-bb5f-4f96-814b-07e1382e0504
+12:23:43.426 [listener] changed: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad
+12:23:43.427 [listener] changed: scan::b0477803-ad33-4e28-92a2-aa3d4f9a6e14, scan::64265bb9-bb5f-4f96-814b-07e1382e0504
+12:23:45.177 [listener] changed: scan::337c1925-9ab1-47a5-9c67-6f5c3c5319ad

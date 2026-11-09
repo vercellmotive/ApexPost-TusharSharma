@@ -365,3 +365,8 @@ FodyWeavers.xsd
 # ApexPost runtime data and macOS metadata
 **/App_Data/
 .DS_Store
+
+# Couchbase Lite data written by the courier harness
+**/courier-data/
+*.cblite2/
+listener.log

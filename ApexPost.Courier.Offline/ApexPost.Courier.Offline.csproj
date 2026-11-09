@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Couchbase.Lite" Version="4.1.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ApexPost.Courier.Offline.Tests" />
+  </ItemGroup>
+</Project>
