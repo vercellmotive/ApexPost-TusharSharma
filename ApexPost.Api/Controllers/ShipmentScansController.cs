@@ -1,20 +1,29 @@
 using ApexPost.Api.Contracts;
 using ApexPost.Api.Errors;
 using ApexPost.Tracking.Application;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers;
 
-/// <summary>The scan history of a shipment, and the upload of scans recorded offline by courier devices.</summary>
+/// <summary>
+/// The scan history of a shipment, and the upload of scans recorded offline by courier devices. The scan contract
+/// did not change in version 2, so one controller serves both versions.
+/// </summary>
 [ApiController]
-[Route("api/shipments/{trackingNumber:trackingNumber}/scans")]
+[ApiVersion(1.0, Deprecated = true)]
+[ApiVersion(2.0)]
+[Route("api/v{version:apiVersion}/shipments/{trackingNumber:trackingNumber}/scans")]
+[Tags("Scans")]
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class ShipmentScansController(IShipmentService shipments) : ControllerBase
 {
-    /// <summary>Uploads scans recorded offline. Safe to repeat: a scan id that is already stored is skipped.</summary>
+    /// <summary>Upload offline scans.</summary>
+    /// <remarks>Uploads scans recorded offline. Safe to repeat: a scan id that is already stored is skipped.</remarks>
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
     /// <param name="request">One to 100 scans.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
     /// <response code="200">How many scans were accepted, skipped as duplicates and rejected, with the reasons.</response>
+    [EndpointSummary("Upload offline scans")]
     [HttpPost(Name = "UploadScans")]
     [Consumes("application/json")]
     [ProducesResponseType<ScanUploadResponse>(StatusCodes.Status200OK)]
@@ -27,9 +36,10 @@ public sealed class ShipmentScansController(IShipmentService shipments) : Contro
         return result.Succeeded ? Ok(result.Value.ToResponse()) : this.ToProblem(result.Error);
     }
 
-    /// <summary>Gets the scan history of a shipment, oldest first.</summary>
+    /// <summary>Get scan history.</summary>
+    /// <remarks>Gets the scan history of a shipment, oldest first.</remarks>
     /// <param name="trackingNumber">The tracking number, such as APX-10000001.</param>
-    /// <param name="ct">Cancelled when the client disconnects.</param>
+    [EndpointSummary("Get scan history")]
     [HttpGet(Name = "ListScans")]
     [ProducesResponseType<IReadOnlyList<ScanResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]

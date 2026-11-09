@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ApexPost.Api\ApexPost.Api.csproj" />
+    <ProjectReference Include="..\ApexPost.Client.Consumer\ApexPost.Client.Consumer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

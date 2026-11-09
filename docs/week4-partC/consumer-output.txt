@@ -1,0 +1,5 @@
+Created  APX-71075719: Created, to Mia Fictional in Sydney
+Fetched  APX-71075719: Created, latest scan none
+Uploaded 2 scans: 2 accepted, 0 duplicates skipped, 0 rejected
+Latest   InTransit at Sydney hub
+Handled  404: Shipment not found. No shipment has tracking number APX-00000000.

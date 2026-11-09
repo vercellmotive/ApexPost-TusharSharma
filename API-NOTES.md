@@ -1,21 +1,21 @@
 # ApexPost.Api notes
 
-The API exposes shipments and their scans over HTTPS. Couriers upload the scans they recorded offline in Part A, and the customer portal and partners track shipments. Every error response is ProblemDetails (`application/problem+json`) with a `traceId`.
+The API exposes shipments and their scans over HTTPS, in two versions: `/api/v1/...` (the Part B contract, deprecated) and `/api/v2/...`. The table uses `v{n}` for either. [`VERSIONING.md`](VERSIONING.md) lists what differs. Couriers upload the scans they recorded offline in Part A, and the customer portal and partners track shipments. Every error response is ProblemDetails (`application/problem+json`) with a `traceId`.
 
 ## Endpoints
 
 | Verb | Route | Purpose | Status codes |
 |---|---|---|---|
-| GET | `/api/shipments?page=&pageSize=&status=&city=` | Paged, filtered list, newest first | 200 list; 400 page below 1, pageSize outside 1–50, unknown status |
-| GET | `/api/shipments/{trackingNumber}` | One shipment | 200; 404 unknown tracking number |
-| POST | `/api/shipments` | Create a shipment in Created status | 201 with `Location`; 400 validation; 409 duplicate tracking number; 415 not JSON |
-| PUT | `/api/shipments/{trackingNumber}` | Replace recipient, city and weight | 200; 400; 404; 409 shipment is Delivered or Failed, or changed by another request; 415 |
-| PATCH | `/api/shipments/{trackingNumber}/status` | Change status only | 200; 400 missing or unknown status; 404; 409 move not allowed, or changed by another request; 415 |
-| DELETE | `/api/shipments/{trackingNumber}` | Delete a shipment and its scans | 204; 404; 409 status is not Created |
-| POST | `/api/shipments/{trackingNumber}/scans` | Bulk upload of offline scans | 200 with counts; 400 validation; 404; 415 |
-| GET | `/api/shipments/{trackingNumber}/scans` | Scan history, oldest first | 200; 404 |
+| GET | `/api/v{n}/shipments?page=&pageSize=&status=&city=` | Paged, filtered list, newest first | 200 list; 400 page below 1, pageSize outside 1–50, unknown status |
+| GET | `/api/v{n}/shipments/{trackingNumber}` | One shipment | 200; 404 unknown tracking number |
+| POST | `/api/v{n}/shipments` | Create a shipment in Created status | 201 with `Location`; 400 validation; 409 duplicate tracking number; 415 not JSON |
+| PUT | `/api/v{n}/shipments/{trackingNumber}` | Replace recipient, city and weight | 200; 400; 404; 409 shipment is Delivered or Failed, or changed by another request; 415 |
+| PATCH | `/api/v{n}/shipments/{trackingNumber}/status` | Change status only | 200; 400 missing or unknown status; 404; 409 move not allowed, or changed by another request; 415 |
+| DELETE | `/api/v{n}/shipments/{trackingNumber}` | Delete a shipment and its scans | 204; 404; 409 status is not Created |
+| POST | `/api/v{n}/shipments/{trackingNumber}/scans` | Bulk upload of offline scans | 200 with counts; 400 validation; 404; 415 |
+| GET | `/api/v{n}/shipments/{trackingNumber}/scans` | Scan history, oldest first | 200; 404 |
 
-Any route also returns 500 ProblemDetails from the global exception handler if something unexpected fails, and 405 for a verb the route does not have.
+The Part B URLs without a version, such as `/api/shipments`, are rewritten to v1 and keep working. An unknown version such as `/api/v3/...` returns 404. Any route also returns 500 ProblemDetails from the global exception handler if something unexpected fails, and 405 for a verb the route does not have.
 
 `{trackingNumber}` uses the `trackingNumber` route constraint. A value that is not `APX-` and eight digits does not match the route, so it gets 404 like any other unknown tracking number.
 

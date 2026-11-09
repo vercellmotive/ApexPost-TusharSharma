@@ -5,6 +5,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>ApexPost-Api-LocalSecrets</UserSecretsId>
+    <!-- The XML comments become the summaries and descriptions in the OpenAPI documents. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      AV0029 and AV0030 suggest the Asp.Versioning.OpenApi package. The brief asks for documents made from the
+      Asp.Versioning API Explorer group names, which OpenApiDocuments.cs does with the built-in generator alone.
+    -->
+    <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
+    <!--
+      CS1573: the CancellationToken parameters have no <param> tag on purpose. The .NET 10 XML comment generator
+      would otherwise show the token's text as the description of the request body.
+    -->
+    <NoWarn>$(NoWarn);CS1573</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +27,13 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ApexPost.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc" Version="10.2.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUi" Version="10.3.1" />
   </ItemGroup>
 
 </Project>

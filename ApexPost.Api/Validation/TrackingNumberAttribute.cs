@@ -8,5 +8,6 @@ namespace ApexPost.Api.Validation;
 public sealed class TrackingNumberAttribute()
     : ValidationAttribute("The {0} field must be APX- followed by eight digits, such as APX-10000001.")
 {
+    /// <inheritdoc />
     public override bool IsValid(object? value) => value is null || TrackingNumber.IsValid(value as string);
 }
