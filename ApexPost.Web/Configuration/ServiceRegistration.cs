@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace ApexPost.Web.Configuration;
@@ -180,6 +181,7 @@ public static class ServiceRegistration
         services.AddScoped<ICatalogueCache>(provider => provider.GetRequiredService<ProductCatalogueService>());
 
         services.AddScoped<DashboardService>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<TransactionService>();
         services.AddScoped<InventoryService>();
         services.AddScoped<StaffAuthenticationService>();

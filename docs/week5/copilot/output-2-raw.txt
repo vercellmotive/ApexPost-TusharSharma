@@ -1,0 +1,528 @@
+ ● Copilot Fusion selected GPT-6 Luna because it was the best choice out of the models available in
+   your plan.
+
+ / Search "**/*" 2 files found
+
+ ● Read prompt.txt 72 lines read
+
+ ● Read output.txt 4 lines read
+
+ ✗ Edit  Create AccessControl.feature  Create AccessControlSteps.cs  Permission denied because no i…
+   Approval check
+     └ ✗ Denied, no one to approve write
+       (<scratch>/copilot/run2/AccessControl.feature)
+   Permission denied because no interactive user response was available. Retry in an interactive 
+   session so the user can approve it, or try an alternative that does not require this permission.
+
+ ✗ Shell  Permission denied because no interactive user response was available. Retry in an interact
+   cat > AccessControl.feature <<'EOF'
+   @api
+   Feature: Shipment access control
+     Shipment information and actions are available only to people with the appropriate access.
+
+     Background:
+       Given a shipment is available
+
+     Scenario Outline: Signed-in users can view shipment details
+       Given I am signed in as "<role>"
+       When I request the shipment details
+       Then the API response status is 200
+
+       Examples:
+         | role    |
+         | Admin   |
+         | Courier |
+
+     Scenario: Visitors cannot view shipment details
+       Given I am not signed in
+       When I request the shipment details
+       Then the API response status is 401
+       And the response is Problem Details
+
+     Scenario Outline: Only administrators can remove a shipment
+       Given I am signed in as "<role>"
+       When I remove the shipment
+       Then the API response status is <status>
+       And any access denial is returned as Problem Details
+
+       Examples:
+         | role    | status |
+         | Courier | 403    |
+         | Admin   | 204    |
+
+     Scenario Outline: Only couriers can perform delivery work
+       Given I am signed in as an administrator
+       When I try to "<action>" the shipment
+       Then the API response status is 403
+       And the response is Problem Details
+
+       Examples:
+         | action        |
+         | change status |
+         | upload a scan |
+
+     Scenario: A courier can only upload scans under their own identity
+       Given I am signed in as a courier
+       When I upload a scan for another courier
+       Then the API response status is 403
+       And the response is Problem Details
+       And no scan is stored
+
+     Scenario Outline: Partner access requires the configured credential
+       Given the partner credential is "<credential>"
+       When I request the partner shipment details
+       Then the API response status is <status>
+       And any access denial is returned as Problem Details
+
+       Examples:
+         | credential | status |
+         | missing    | 401    |
+         | incorrect  | 401    |
+         | configured | 200    |
+   EOF
+   cat > AccessControlSteps.cs <<'EOF'
+   using System.Globalization;
+   using System.Net;
+   using System.Net.Http.Json;
+   using System.Text.Json;
+   using ApexPost.Api.Security;
+   using ApexPost.Specs.Support;
+   using ApexPost.Testing.Api;
+   using Reqnroll;
+   using Xunit;
+
+   namespace ApexPost.Specs.StepDefinitions;
+
+   [Binding]
+   public sealed class AccessControlSteps(ApiScenarioContext context)
+   {
+       [Given("a shipment is available")]
+       public async Task GivenAShipmentIsAvailable()
+       {
+           SetClient(context.Api.CreateClient(ApexPostRoles.Admin));
+
+           using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v2/shipments")
+           {
+               Content = JsonContent.Create(new
+               {
+                   trackingNumber = "APX-70000001",
+                   originBranchCode = "B001",
+                   recipientName = "Mia Fictional",
+                   recipientPhone = "+61 2 5550 1234",
+                   recipientAddress = "12 Example Lane",
+                   city = "Sydney",
+                   weightKg = 2.5
+               })
+           };
+
+           await SendAsync(request);
+           Assert.True(context.LastResponse!.IsSuccessStatusCode,
+               $"Creating the shipment failed with {(int)context.LastResponse.StatusCode}.");
+       }
+
+       [Given("I am signed in as {string}")]
+       public void GivenIAmSignedInAs(string role) =>
+           SetClient(context.Api.CreateClient(GetRole(role)));
+
+       [Given("I am signed in as an administrator")]
+       public void GivenIAmSignedInAsAnAdministrator() =>
+           SetClient(context.Api.CreateClient(ApexPostRoles.Admin));
+
+       [Given("I am signed in as a courier")]
+       public void GivenIAmSignedInAsACourier() =>
+           SetClient(context.Api.CreateClient(ApexPostRoles.Courier));
+
+       [Given("I am not signed in")]
+       public void GivenIAmNotSignedIn() =>
+           SetClient(context.Api.CreateDefaultClient());
+
+       [Given("the partner credential is {string}")]
+       public void GivenThePartnerCredentialIs(string credential)
+       {
+           SetClient(context.Api.CreateDefaultClient());
+           context.Client.DefaultRequestHeaders.Remove("X-Api-Key");
+           if (credential != "missing")
+           {
+               context.Client.DefaultRequestHeaders.Add(
+                   "X-Api-Key",
+                   credential == "configured" ? ApiFactory.PartnerKey : "incorrect-partner-key");
+           }
+       }
+
+       [When("I request the shipment details")]
+       public Task WhenIRequestTheShipmentDetails() =>
+           SendAsync(new HttpRequestMessage(HttpMethod.Get, "/api/v2/shipments/APX-70000001"));
+
+       [When("I remove the shipment")]
+       public Task WhenIRemoveTheShipment() =>
+           SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v2/shipments/APX-70000001"));
+
+       [When("I try to {string} the shipment")]
+       public Task WhenITryToPerformDeliveryWork(string action)
+       {
+           if (action == "change status")
+           {
+               return SendAsync(new HttpRequestMessage(
+                   HttpMethod.Patch, "/api/v2/shipments/APX-70000001/status")
+               {
+                   Content = JsonContent.Create(new { status = "PickedUp" })
+               });
+           }
+
+           if (action == "upload a scan")
+           {
+               return SendAsync(new HttpRequestMessage(
+                   HttpMethod.Post, "/api/v2/shipments/APX-70000001/scans")
+               {
+                   Content = JsonContent.Create(new { scans = new[] { CreateScan("CR-1001") } })
+               });
+           }
+
+           throw new ArgumentOutOfRangeException(nameof(action), action, "Unsupported delivery
+   action.");
+       }
+
+       [When("I upload a scan for another courier")]
+       public Task WhenIUploadAScanForAnotherCourier() =>
+           SendAsync(new HttpRequestMessage(
+               HttpMethod.Post, "/api/v2/shipments/APX-70000001/scans")
+           {
+               Content = JsonContent.Create(new { scans = new[] { CreateScan("CR-2002") } })
+           });
+
+       [When("I request the partner shipment details")]
+       public Task WhenIRequestThePartnerShipmentDetails() =>
+           SendAsync(new HttpRequestMessage(
+               HttpMethod.Get, "/api/v2/partner/shipments/APX-70000001"));
+
+       [Then("the API response status is {int}")]
+       public void ThenTheApiResponseStatusIs(int status) =>
+           Assert.Equal((HttpStatusCode)status, context.LastResponse!.StatusCode);
+
+       [Then("the response is Problem Details")]
+       public async Task ThenTheResponseIsProblemDetails()
+       {
+           Assert.Equal(
+               "application/problem+json",
+               context.LastResponse!.Content.Headers.ContentType?.MediaType);
+
+           using var body = await JsonDocument.ParseAsync(
+               await context.LastResponse.Content.ReadAsStreamAsync());
+           Assert.Equal(JsonValueKind.Object, body.RootElement.ValueKind);
+           Assert.Equal(
+               (int)context.LastResponse.StatusCode,
+               body.RootElement.GetProperty("status").GetInt32());
+           Assert.True(body.RootElement.GetProperty("title").GetString() is not null);
+       }
+
+       [Then("any access denial is returned as Problem Details")]
+       public Task ThenAnyAccessDenialIsReturnedAsProblemDetails() =>
+           (int)context.LastResponse!.StatusCode is 401 or 403
+               ? ThenTheResponseIsProblemDetails()
+               : Task.CompletedTask;
+
+       [Then("no scan is stored")]
+       public void ThenNoScanIsStored()
+       {
+           using var database = context.Api.Database.CreateContext();
+           Assert.Equal(0, database.Scans.Count());
+       }
+
+       private void SetClient(HttpClient client)
+       {
+           context.Client?.Dispose();
+           context.Client = client;
+       }
+
+       private async Task SendAsync(HttpRequestMessage request)
+       {
+           context.LastResponse?.Dispose();
+           using (request)
+           {
+               context.LastResponse = await context.Client.SendAsync(request);
+           }
+       }
+
+       private static string GetRole(string role) =>
+           role switch
+           {
+               "Admin" => ApexPostRoles.Admin,
+               "Courier" => ApexPostRoles.Courier,
+               _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported shipment
+   role.")
+           };
+
+       private object CreateScan(string courierId) => new
+       {
+           scanId = $"scan::{Guid.NewGuid():D}".ToLowerInvariant(),
+           scanType = "Pickup",
+           courierId,
+           location = "Sydney depot",
+           scannedAtUtc = context.Api.Clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture)
+       };
+   }
+   EOF
+   Approval check
+     └ ✗ Denied, no one to approve shell command
+   Permission denied because no interactive user response was available. Retry in an interactive 
+   session so the user can approve it, or try an alternative that does not require this permission.
+
+### `AccessControl.feature`
+
+```gherkin
+@api
+Feature: Shipment access control
+  Shipment information and actions are available only to people with the appropriate access.
+
+  Background:
+    Given a shipment is available
+
+  Scenario Outline: Signed-in users can view shipment details
+    Given I am signed in as "<role>"
+    When I request the shipment details
+    Then the API response status is 200
+
+    Examples:
+      | role    |
+      | Admin   |
+      | Courier |
+
+  Scenario: Visitors cannot view shipment details
+    Given I am not signed in
+    When I request the shipment details
+    Then the API response status is 401
+    And the response is Problem Details
+
+  Scenario Outline: Only administrators can remove a shipment
+    Given I am signed in as "<role>"
+    When I remove the shipment
+    Then the API response status is <status>
+    And any access denial is returned as Problem Details
+
+    Examples:
+      | role    | status |
+      | Courier | 403    |
+      | Admin   | 204    |
+
+  Scenario Outline: Only couriers can perform delivery work
+    Given I am signed in as an administrator
+    When I try to "<action>" the shipment
+    Then the API response status is 403
+    And the response is Problem Details
+
+    Examples:
+      | action        |
+      | change status |
+      | upload a scan |
+
+  Scenario: A courier can only upload scans under their own identity
+    Given I am signed in as a courier
+    When I upload a scan for another courier
+    Then the API response status is 403
+    And the response is Problem Details
+    And no scan is stored
+
+  Scenario Outline: Partner access requires the configured credential
+    Given the partner credential is "<credential>"
+    When I request the partner shipment details
+    Then the API response status is <status>
+    And any access denial is returned as Problem Details
+
+    Examples:
+      | credential | status |
+      | missing    | 401    |
+      | incorrect  | 401    |
+      | configured | 200    |
+```
+
+### `AccessControlSteps.cs`
+
+```csharp
+using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using ApexPost.Api.Security;
+using ApexPost.Specs.Support;
+using ApexPost.Testing.Api;
+using Reqnroll;
+using Xunit;
+
+namespace ApexPost.Specs.StepDefinitions;
+
+[Binding]
+public sealed class AccessControlSteps(ApiScenarioContext context)
+{
+    [Given("a shipment is available")]
+    public async Task GivenAShipmentIsAvailable()
+    {
+        SetClient(context.Api.CreateClient(ApexPostRoles.Admin));
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v2/shipments")
+        {
+            Content = JsonContent.Create(new
+            {
+                trackingNumber = "APX-70000001",
+                originBranchCode = "B001",
+                recipientName = "Mia Fictional",
+                recipientPhone = "+61 2 5550 1234",
+                recipientAddress = "12 Example Lane",
+                city = "Sydney",
+                weightKg = 2.5
+            })
+        };
+
+        await SendAsync(request);
+        Assert.True(context.LastResponse!.IsSuccessStatusCode,
+            $"Creating the shipment failed with {(int)context.LastResponse.StatusCode}.");
+    }
+
+    [Given("I am signed in as {string}")]
+    public void GivenIAmSignedInAs(string role) =>
+        SetClient(context.Api.CreateClient(GetRole(role)));
+
+    [Given("I am signed in as an administrator")]
+    public void GivenIAmSignedInAsAnAdministrator() =>
+        SetClient(context.Api.CreateClient(ApexPostRoles.Admin));
+
+    [Given("I am signed in as a courier")]
+    public void GivenIAmSignedInAsACourier() =>
+        SetClient(context.Api.CreateClient(ApexPostRoles.Courier));
+
+    [Given("I am not signed in")]
+    public void GivenIAmNotSignedIn() =>
+        SetClient(context.Api.CreateDefaultClient());
+
+    [Given("the partner credential is {string}")]
+    public void GivenThePartnerCredentialIs(string credential)
+    {
+        SetClient(context.Api.CreateDefaultClient());
+        context.Client.DefaultRequestHeaders.Remove("X-Api-Key");
+
+        if (credential != "missing")
+        {
+            context.Client.DefaultRequestHeaders.Add(
+                "X-Api-Key",
+                credential == "configured" ? ApiFactory.PartnerKey : "incorrect-partner-key");
+        }
+    }
+
+    [When("I request the shipment details")]
+    public Task WhenIRequestTheShipmentDetails() =>
+        SendAsync(new HttpRequestMessage(HttpMethod.Get, "/api/v2/shipments/APX-70000001"));
+
+    [When("I remove the shipment")]
+    public Task WhenIRemoveTheShipment() =>
+        SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v2/shipments/APX-70000001"));
+
+    [When("I try to {string} the shipment")]
+    public Task WhenITryToPerformDeliveryWork(string action)
+    {
+        if (action == "change status")
+        {
+            return SendAsync(new HttpRequestMessage(
+                HttpMethod.Patch, "/api/v2/shipments/APX-70000001/status")
+            {
+                Content = JsonContent.Create(new { status = "PickedUp" })
+            });
+        }
+
+        if (action == "upload a scan")
+        {
+            return SendAsync(new HttpRequestMessage(
+                HttpMethod.Post, "/api/v2/shipments/APX-70000001/scans")
+            {
+                Content = JsonContent.Create(new { scans = new[] { CreateScan("CR-1001") } })
+            });
+        }
+
+        throw new ArgumentOutOfRangeException(nameof(action), action, "Unsupported delivery action.");
+    }
+
+    [When("I upload a scan for another courier")]
+    public Task WhenIUploadAScanForAnotherCourier() =>
+        SendAsync(new HttpRequestMessage(
+            HttpMethod.Post, "/api/v2/shipments/APX-70000001/scans")
+        {
+            Content = JsonContent.Create(new { scans = new[] { CreateScan("CR-2002") } })
+        });
+
+    [When("I request the partner shipment details")]
+    public Task WhenIRequestThePartnerShipmentDetails() =>
+        SendAsync(new HttpRequestMessage(
+            HttpMethod.Get, "/api/v2/partner/shipments/APX-70000001"));
+
+    [Then("the API response status is {int}")]
+    public void ThenTheApiResponseStatusIs(int status) =>
+        Assert.Equal((HttpStatusCode)status, context.LastResponse!.StatusCode);
+
+    [Then("the response is Problem Details")]
+    public async Task ThenTheResponseIsProblemDetails()
+    {
+        Assert.Equal(
+            "application/problem+json",
+            context.LastResponse!.Content.Headers.ContentType?.MediaType);
+
+        using var body = await JsonDocument.ParseAsync(
+            await context.LastResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(JsonValueKind.Object, body.RootElement.ValueKind);
+        Assert.Equal(
+            (int)context.LastResponse.StatusCode,
+            body.RootElement.GetProperty("status").GetInt32());
+        Assert.True(body.RootElement.GetProperty("title").GetString() is not null);
+    }
+
+    [Then("any access denial is returned as Problem Details")]
+    public Task ThenAnyAccessDenialIsReturnedAsProblemDetails() =>
+        (int)context.LastResponse!.StatusCode is 401 or 403
+            ? ThenTheResponseIsProblemDetails()
+            : Task.CompletedTask;
+
+    [Then("no scan is stored")]
+    public void ThenNoScanIsStored()
+    {
+        using var database = context.Api.Database.CreateContext();
+        Assert.Equal(0, database.Scans.Count());
+    }
+
+    private void SetClient(HttpClient client)
+    {
+        context.Client?.Dispose();
+        context.Client = client;
+    }
+
+    private async Task SendAsync(HttpRequestMessage request)
+    {
+        context.LastResponse?.Dispose();
+        using (request)
+        {
+            context.LastResponse = await context.Client.SendAsync(request);
+        }
+    }
+
+    private static string GetRole(string role) =>
+        role switch
+        {
+            "Admin" => ApexPostRoles.Admin,
+            "Courier" => ApexPostRoles.Courier,
+            _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported shipment role.")
+        };
+
+    private object CreateScan(string courierId) => new
+    {
+        scanId = $"scan::{Guid.NewGuid():D}".ToLowerInvariant(),
+        scanType = "Pickup",
+        courierId,
+        location = "Sydney depot",
+        scannedAtUtc = context.Api.Clock.GetUtcNow().ToString("O", CultureInfo.InvariantCulture)
+    };
+}
+```
+
+
+
+Changes    +0 -0
+AI Credits 0.78 (1m 38s)
+Tokens     ↑ 94.9k (80.1k cached, 14.8k written) • ↓ 10.2k (4.0k reasoning)
+Resume     copilot --resume=0d0645c8-9f8f-440c-b270-9a9b7067528a

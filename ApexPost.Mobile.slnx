@@ -2,6 +2,5 @@
   <!-- The courier app needs the .NET MAUI workload, so it has its own solution. ApexPost.slnx builds everything else. -->
   <Project Path="ApexPost.Courier/ApexPost.Courier.csproj" />
   <Project Path="ApexPost.Courier.Core/ApexPost.Courier.Core.csproj" />
-  <Project Path="ApexPost.Courier.Core.Tests/ApexPost.Courier.Core.Tests.csproj" />
   <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" />
 </Solution>

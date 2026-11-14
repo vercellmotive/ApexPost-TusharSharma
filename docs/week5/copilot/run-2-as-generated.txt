@@ -1,0 +1,12 @@
+Failed!  - Failed:    10, Passed:    13, Skipped:     0, Total:    23, Duration: 1 s - ApexPost.Specs.dll (net10.0)
+A parcel must weigh from 0.1 kg to 70 kg(weight: "0", outcome: "refused for its weight", __pickleIndex: "5", exampleTags: []) [FAIL]
+A parcel must weigh from 0.1 kg to 70 kg(weight: "0.09", outcome: "refused for its weight", __pickleIndex: "6", exampleTags: []) [FAIL]
+A parcel must weigh from 0.1 kg to 70 kg(weight: "0.1", outcome: "registered", __pickleIndex: "2", exampleTags: []) [FAIL]
+A parcel must weigh from 0.1 kg to 70 kg(weight: "35", outcome: "registered", __pickleIndex: "3", exampleTags: []) [FAIL]
+A parcel must weigh from 0.1 kg to 70 kg(weight: "70", outcome: "registered", __pickleIndex: "4", exampleTags: []) [FAIL]
+A parcel must weigh from 0.1 kg to 70 kg(weight: "70.01", outcome: "refused for its weight", __pickleIndex: "7", exampleTags: []) [FAIL]
+A tracking number can be used only once [FAIL]
+A valid shipment is registered [FAIL]
+Only couriers can perform delivery work(action: "change status", __pickleIndex: "5", exampleTags: []) [FAIL]
+Only couriers can perform delivery work(action: "upload a scan", __pickleIndex: "6", exampleTags: []) [FAIL]
+   Reqnroll.AmbiguousBindingException : Ambiguous step definitions found for step 'Given I am signed in as an administrator': ApexPost.Specs:ApexPost.Specs.StepDefinitions.AccessControlSteps.GivenIAmSignedInAsAnAdministrator(), ApexPost.Specs:ApexPost.Specs.StepDefinitions.ShipmentCreationSteps.GivenIAmSignedInAsAnAdministrator()

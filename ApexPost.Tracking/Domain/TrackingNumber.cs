@@ -7,8 +7,10 @@ public static partial class TrackingNumber
 {
     public const string Pattern = @"^APX-\d{8}$";
 
-    // ECMAScript mode makes \d match only 0-9, not every Unicode digit.
-    [GeneratedRegex(Pattern, RegexOptions.ECMAScript | RegexOptions.CultureInvariant)]
+    // Pattern is the ECMAScript form the OpenAPI document publishes. The check here is stricter in two ways .NET needs:
+    // [0-9] instead of \d, so other scripts' digits do not count, and \z instead of $, because in .NET $ also matches
+    // before a final line break and would let "APX-12345678\n" through.
+    [GeneratedRegex(@"\AAPX-[0-9]{8}\z", RegexOptions.CultureInvariant)]
     private static partial Regex Format();
 
     public static bool IsValid(string? value) => value is not null && Format().IsMatch(value);

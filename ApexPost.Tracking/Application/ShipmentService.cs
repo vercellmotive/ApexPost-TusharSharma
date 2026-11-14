@@ -180,7 +180,7 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
         {
             if (!ScanId.TryParse(scan.ScanId, out var id))
             {
-                rejections.Add(new ScanRejection(scan.ScanId, $"The scan id must look like {ScanId.Prefix}{{Guid}}."));
+                rejections.Add(new ScanRejection(scan.ScanId, ScanRejectionReasons.BadScanId));
             }
             else if (!seen.Add(id))
             {
@@ -212,7 +212,7 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
             }
             else
             {
-                rejections.Add(new ScanRejection(scan.ScanId, "This scan id is already recorded for another shipment."));
+                rejections.Add(new ScanRejection(scan.ScanId, ScanRejectionReasons.OwnedByAnotherShipment));
             }
         }
 
@@ -255,17 +255,22 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
     {
         if (scan.ScannedAtUtc > now + ScanClockTolerance)
         {
-            return "The scan time is in the future.";
+            return ScanRejectionReasons.InTheFuture;
         }
 
         if (scan.ScannedAtUtc < shipment.CreatedAtUtc - ScanClockTolerance)
         {
-            return "The scan time is before the shipment was created.";
+            return ScanRejectionReasons.BeforeCreation;
         }
 
         if (scan.ScanType == ScanType.Delivered && string.IsNullOrWhiteSpace(scan.RecipientSignatureName))
         {
-            return "A Delivered scan needs the name of the person who signed for it.";
+            return ScanRejectionReasons.DeliveredWithoutSignature;
+        }
+
+        if (!shipment.AcceptsScanRecordedAt(scan.ScannedAtUtc))
+        {
+            return ScanRejectionReasons.AfterClosed(shipment.Status);
         }
 
         return null;
@@ -295,4 +300,16 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
         ServiceErrorKind.Conflict,
         "Shipment changed",
         $"Shipment {trackingNumber} was changed by another request. Read it again and retry.");
+}
+
+/// <summary>Why a scan in an upload was rejected. The text is returned to the courier app, which shows it.</summary>
+internal static class ScanRejectionReasons
+{
+    public static readonly string BadScanId = $"The scan id must look like {ScanId.Prefix}{{Guid}}.";
+    public const string OwnedByAnotherShipment = "This scan id is already recorded for another shipment.";
+    public const string InTheFuture = "The scan time is in the future.";
+    public const string BeforeCreation = "The scan time is before the shipment was created.";
+    public const string DeliveredWithoutSignature = "A Delivered scan needs the name of the person who signed for it.";
+
+    public static string AfterClosed(ShipmentStatus finalStatus) => $"The shipment was closed as {finalStatus} before this scan was recorded.";
 }

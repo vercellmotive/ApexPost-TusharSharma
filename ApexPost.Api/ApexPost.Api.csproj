@@ -31,7 +31,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="ApexPost.Api.Tests" />
+    <InternalsVisibleTo Include="ApexPost.UnitTests" />
+    <InternalsVisibleTo Include="ApexPost.IntegrationTests" />
+    <InternalsVisibleTo Include="ApexPost.Specs" />
+    <InternalsVisibleTo Include="ApexPost.Testing" />
   </ItemGroup>
 
   <ItemGroup>

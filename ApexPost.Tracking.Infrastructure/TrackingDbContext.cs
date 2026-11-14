@@ -44,6 +44,7 @@ public sealed class TrackingDbContext(DbContextOptions<TrackingDbContext> option
         shipment.Property(item => item.Status).HasConversion<string>().HasMaxLength(20).IsUnicode(false);
         shipment.Property<byte[]>(RowVersion).IsRowVersion();
         shipment.Ignore(item => item.Recipient);
+        shipment.Ignore(item => item.ClosedAtUtc);
 
         // The list endpoint filters by status and city and pages newest first.
         shipment.HasIndex(item => new { item.Status, item.CreatedAtUtc }).HasDatabaseName("IX_Shipments_Status_Created");

@@ -20,7 +20,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="ApexPost.Courier.Core.Tests" />
+    <InternalsVisibleTo Include="ApexPost.UnitTests" />
+    <InternalsVisibleTo Include="ApexPost.IntegrationTests" />
+    <InternalsVisibleTo Include="ApexPost.Specs" />
+    <InternalsVisibleTo Include="ApexPost.Testing" />
   </ItemGroup>
 
 </Project>

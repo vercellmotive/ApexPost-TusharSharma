@@ -43,6 +43,12 @@ public sealed class Shipment
     /// <summary>Delivered and Failed are final: nothing about the shipment changes after that.</summary>
     public bool IsClosed => NextStatuses[Status].Length == 0;
 
+    /// <summary>
+    /// When the shipment became Delivered or Failed, or null while it is open. A closed shipment never changes again,
+    /// so its last update is the moment it closed.
+    /// </summary>
+    public DateTimeOffset? ClosedAtUtc => IsClosed ? UpdatedAtUtc : null;
+
     /// <summary>A shipment can be deleted only before a courier has picked it up.</summary>
     public bool CanBeDeleted => Status == ShipmentStatus.Created;
 
@@ -69,6 +75,12 @@ public sealed class Shipment
         shipment.ReplaceDetails(recipient, weightKg, nowUtc);
         return shipment;
     }
+
+    /// <summary>
+    /// A scan belongs to the shipment's history if it was recorded while the shipment was open, or at the moment it
+    /// closed. A scan recorded later would make a delivered parcel appear to move again.
+    /// </summary>
+    public bool AcceptsScanRecordedAt(DateTimeOffset scannedAtUtc) => ClosedAtUtc is not { } closed || scannedAtUtc <= closed;
 
     public static bool CanMove(ShipmentStatus from, ShipmentStatus to) => NextStatuses[from].Contains(to);
 

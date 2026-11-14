@@ -1,0 +1,170 @@
+using ApexPost.Courier.Offline.Domain;
+using ApexPost.Courier.Offline.Sync;
+using Moq;
+using Xunit;
+
+namespace ApexPost.Courier.Offline.Tests.Sync;
+
+public sealed class OutboxServiceTests
+{
+    [Fact]
+    public async Task SyncPendingAsync_SuccessfulUpload_MarksScanSynced()
+    {
+        // Arrange
+        var scan = CreateScan("tracking-1");
+        var repository = new Mock<IScanRepository>();
+        var uploader = new Mock<IShipmentUploader>();
+        repository.Setup(x => x.FindPending()).Returns(new[] { scan });
+        uploader.Setup(x => x.UploadAsync(
+                It.Is<ShipmentScan>(s => s.Id == scan.Id),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UploadResult.Success);
+        var service = new OutboxService(repository.Object, uploader.Object);
+
+        // Act
+        var result = await service.SyncPendingAsync();
+
+        // Assert
+        Assert.Equal(new[] { scan.Id }, result.SyncedIds);
+        Assert.Empty(result.Failures);
+        repository.Verify(x => x.UpdateSyncStatus(scan.Id, SyncStatus.Synced), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncPendingAsync_RejectedUpload_MarksScanFailedWithError()
+    {
+        // Arrange
+        var scan = CreateScan("tracking-2");
+        const string error = "Shipment was rejected.";
+        var repository = new Mock<IScanRepository>();
+        var uploader = new Mock<IShipmentUploader>();
+        repository.Setup(x => x.FindPending()).Returns(new[] { scan });
+        uploader.Setup(x => x.UploadAsync(
+                It.Is<ShipmentScan>(s => s.Id == scan.Id),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UploadResult.Failure(error));
+        var service = new OutboxService(repository.Object, uploader.Object);
+
+        // Act
+        var result = await service.SyncPendingAsync();
+
+        // Assert
+        Assert.Empty(result.SyncedIds);
+        Assert.Equal(new OutboxFailure(scan.Id, error), Assert.Single(result.Failures));
+        repository.Verify(x => x.UpdateSyncStatus(scan.Id, SyncStatus.Failed), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncPendingAsync_UploaderThrows_MarksScanFailedAndContinuesRun()
+    {
+        // Arrange
+        var failedScan = CreateScan("tracking-3");
+        var successfulScan = CreateScan("tracking-4");
+        const string error = "Unexpected upload error.";
+        var repository = new Mock<IScanRepository>();
+        var uploader = new Mock<IShipmentUploader>();
+        repository.Setup(x => x.FindPending()).Returns(new[] { failedScan, successfulScan });
+        uploader.Setup(x => x.UploadAsync(
+                It.Is<ShipmentScan>(s => s.Id == failedScan.Id),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException(error));
+        uploader.Setup(x => x.UploadAsync(
+                It.Is<ShipmentScan>(s => s.Id == successfulScan.Id),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UploadResult.Success);
+        var service = new OutboxService(repository.Object, uploader.Object);
+
+        // Act
+        var result = await service.SyncPendingAsync();
+
+        // Assert
+        Assert.Equal(new[] { successfulScan.Id }, result.SyncedIds);
+        Assert.Equal(new OutboxFailure(failedScan.Id, error), Assert.Single(result.Failures));
+        repository.Verify(x => x.UpdateSyncStatus(failedScan.Id, SyncStatus.Failed), Times.Once);
+        repository.Verify(x => x.UpdateSyncStatus(successfulScan.Id, SyncStatus.Synced), Times.Once);
+        uploader.Verify(x => x.UploadAsync(It.IsAny<ShipmentScan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task SyncPendingAsync_TransientUploadException_LeavesScansPendingAndStopsRun()
+    {
+        // Arrange
+        var firstScan = CreateScan("tracking-5");
+        var secondScan = CreateScan("tracking-6");
+        var scans = new[] { firstScan, secondScan };
+        var repository = new Mock<IScanRepository>();
+        var uploader = new Mock<IShipmentUploader>();
+        repository.Setup(x => x.FindPending()).Returns(scans);
+        uploader.Setup(x => x.UploadAsync(
+                It.Is<ShipmentScan>(s => s.Id == firstScan.Id),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TransientUploadException("Server unavailable."));
+        var service = new OutboxService(repository.Object, uploader.Object);
+
+        // Act
+        var result = await service.SyncPendingAsync();
+
+        // Assert
+        Assert.Empty(result.SyncedIds);
+        Assert.Empty(result.Failures);
+        Assert.Equal(new[] { firstScan.Id, secondScan.Id }, result.DeferredIds);
+        repository.Verify(x => x.UpdateSyncStatus(It.IsAny<string>(), It.IsAny<SyncStatus>()), Times.Never);
+        uploader.Verify(x => x.UploadAsync(It.IsAny<ShipmentScan>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncPendingAsync_ScanDeletedDuringUpload_SkipsScan()
+    {
+        // Arrange
+        var scan = CreateScan("tracking-7");
+        var repository = new Mock<IScanRepository>();
+        var uploader = new Mock<IShipmentUploader>();
+        repository.Setup(x => x.FindPending()).Returns(new[] { scan });
+        repository.Setup(x => x.UpdateSyncStatus(scan.Id, SyncStatus.Synced)).Returns(false);
+        uploader.Setup(x => x.UploadAsync(
+                It.Is<ShipmentScan>(s => s.Id == scan.Id),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UploadResult.Success);
+        var service = new OutboxService(repository.Object, uploader.Object);
+
+        // Act
+        var result = await service.SyncPendingAsync();
+
+        // Assert
+        Assert.Equal(new[] { scan.Id }, result.SkippedIds);
+        Assert.Empty(result.SyncedIds);
+        repository.Verify(x => x.UpdateSyncStatus(scan.Id, SyncStatus.Synced), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncPendingAsync_CancellationRequested_ThrowsAndDoesNotUpload()
+    {
+        // Arrange
+        var scan = CreateScan("tracking-8");
+        var repository = new Mock<IScanRepository>();
+        var uploader = new Mock<IShipmentUploader>();
+        repository.Setup(x => x.FindPending()).Returns(new[] { scan });
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+        var service = new OutboxService(repository.Object, uploader.Object);
+
+        // Act
+        var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => service.SyncPendingAsync(cancellationSource.Token));
+
+        // Assert
+        Assert.Equal(cancellationSource.Token, exception.CancellationToken);
+        uploader.Verify(x => x.UploadAsync(It.IsAny<ShipmentScan>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static ShipmentScan CreateScan(string trackingNumber) =>
+        ShipmentScan.CreatePending(
+            trackingNumber,
+            ScanType.InTransit,
+            "courier-1",
+            "Depot",
+            new DateTimeOffset(2025, 1, 1, 12, 0, 0, TimeSpan.Zero));
+}
+
+
+
