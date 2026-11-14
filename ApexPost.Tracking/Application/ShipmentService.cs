@@ -268,6 +268,11 @@ public sealed class ShipmentService(IShipmentStore store, IBranchRepository bran
             return "A Delivered scan needs the name of the person who signed for it.";
         }
 
+        if (shipment.IsClosed && scan.ScannedAtUtc > shipment.UpdatedAtUtc)
+        {
+            return $"The shipment was closed as {shipment.Status} before this scan was recorded.";
+        }
+
         return null;
     }
 
