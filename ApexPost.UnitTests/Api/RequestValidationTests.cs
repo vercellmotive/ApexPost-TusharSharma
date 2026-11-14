@@ -137,6 +137,7 @@ public sealed class RequestValidationTests
     [InlineData("+61 2 5550 1234 56789", false)]  // 16 digits: one too many
     [InlineData("02--5550", false)]
     [InlineData("phone 0255501234", false)]
+    [InlineData("0255501234\n", false)]          // a trailing line break, which $ alone would allow
     public void CreateShipmentRequest_PhoneNumber_Needs8To15DigitsInAPlainLayout(string phone, bool expectedValid)
     {
         // Arrange

@@ -29,6 +29,7 @@ public sealed class TrackingNumberTests
     [InlineData("APX-1234567A")]     // a letter in place of a digit
     [InlineData("APX-١٢٣٤٥٦٧٨")]     // Arabic-Indic digits are digits to .NET, but not to the format
     [InlineData(" APX-12345678")]    // leading space
+    [InlineData("APX-12345678\n")]   // trailing newline, which $ alone would allow
     public void IsValid_MalformedNumber_ReturnsFalse(string? trackingNumber)
     {
         // Act
