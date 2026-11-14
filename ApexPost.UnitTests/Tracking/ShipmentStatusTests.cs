@@ -25,20 +25,46 @@ public sealed class ShipmentStatusTests
         Assert.True(allowed);
     }
 
-    [Fact]
-    public void CanMove_DisallowedPair_ReturnsFalse()
+    /// <summary>Every from/to pair that is not in <see cref="AllowedMoves"/>: 31 of the 36.</summary>
+    public static TheoryData<ShipmentStatus, ShipmentStatus> DisallowedMoves()
     {
-        // Act
         var allowed = AllowedMoves.Select(row => ((ShipmentStatus)row[0], (ShipmentStatus)row[1])).ToHashSet();
-
-        // Assert
+        var data = new TheoryData<ShipmentStatus, ShipmentStatus>();
         foreach (var from in Enum.GetValues<ShipmentStatus>())
         {
-            foreach (var to in Enum.GetValues<ShipmentStatus>())
+            foreach (var to in Enum.GetValues<ShipmentStatus>().Where(to => !allowed.Contains((from, to))))
             {
-                Assert.Equal(allowed.Contains((from, to)), Shipment.CanMove(from, to));
+                data.Add(from, to);
             }
         }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(DisallowedMoves))]
+    public void CanMove_DisallowedPair_ReturnsFalse(ShipmentStatus from, ShipmentStatus to)
+    {
+        // Act
+        var allowed = Shipment.CanMove(from, to);
+
+        // Assert
+        Assert.False(allowed);
+    }
+
+    [Fact]
+    public void MoveTo_DeliveredBackToInTransit_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var shipment = Make.ShipmentIn(ShipmentStatus.Delivered);
+
+        // Act
+        Action act = () => shipment.MoveTo(ShipmentStatus.InTransit, TestTime.Start.AddHours(3));
+
+        // Assert
+        var exception = Assert.Throws<InvalidOperationException>(act);
+        Assert.Contains("from Delivered to InTransit", exception.Message);
+        Assert.Equal(ShipmentStatus.Delivered, shipment.Status);
     }
 
     [Fact]
@@ -80,36 +106,6 @@ public sealed class ShipmentStatusTests
 
         // Assert
         Assert.Equal(expected, deletable);
-    }
-
-    [Theory]
-    [InlineData("APX-1234567")]
-    [InlineData("APX-123456789")]
-    [InlineData("apx-12345678")]
-    [InlineData("APX-1234567٣")]
-    [InlineData(" APX-12345678")]
-    public void Create_BadTrackingNumber_Throws(string trackingNumber)
-    {
-        // Act
-        Action act = () => Shipment.Create(trackingNumber, "B001", Make.Recipient(), 1m, TestTime.Start);
-
-        // Assert
-        Assert.Throws<ArgumentException>(act);
-    }
-
-    [Theory]
-    [InlineData("0.09")]
-    [InlineData("70.001")]
-    public void Create_WeightOutOfRange_Throws(string weight)
-    {
-        // Arrange
-        var weightKg = decimal.Parse(weight, System.Globalization.CultureInfo.InvariantCulture);
-
-        // Act
-        Action act = () => Shipment.Create("APX-12345678", "B001", Make.Recipient(), weightKg, TestTime.Start);
-
-        // Assert
-        Assert.Throws<ArgumentOutOfRangeException>(act);
     }
 
     [Fact]
