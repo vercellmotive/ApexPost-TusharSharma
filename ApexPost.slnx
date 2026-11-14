@@ -12,6 +12,7 @@
   <Project Path="ApexPost.Tracking/ApexPost.Tracking.csproj" />
   <Project Path="ApexPost.Web/ApexPost.Web.csproj" Id="494c5fc9-e9c1-4f46-8451-92c19292a228" />
   <Project Path="ApexPost.IntegrationTests/ApexPost.IntegrationTests.csproj" />
+  <Project Path="ApexPost.Specs/ApexPost.Specs.csproj" />
   <Project Path="ApexPost.Testing/ApexPost.Testing.csproj" />
   <Project Path="ApexPost.UnitTests/ApexPost.UnitTests.csproj" />
 </Solution>
