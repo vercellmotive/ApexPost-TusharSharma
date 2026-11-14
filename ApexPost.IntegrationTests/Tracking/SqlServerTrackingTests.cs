@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using ApexPost.Testing.Tracking;
 using ApexPost.Testing.Api;
 using ApexPost.IntegrationTests.Api;
+using Microsoft.Extensions.Time.Testing;
 
 namespace ApexPost.IntegrationTests.Tracking;
 
@@ -72,113 +73,150 @@ public sealed class TrackingTestDatabase : IAsyncLifetime
 
 public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : IClassFixture<TrackingTestDatabase>
 {
-    private static int _next = 50000000;
-    private readonly TestClock _clock = new();
+    private readonly FakeTimeProvider _clock = TestTime.NewClock();
 
-    private static string NextTrackingNumber() => $"APX-{Interlocked.Increment(ref _next)}";
+    private int _shipmentsCreated;
 
-    private async Task<string> CreateShipmentAsync(string city = "Sydney")
+    // A tracking number per test, derived from its name: stable on every run and with no counter shared between tests.
+    private static string TrackingNumberFor(string test) =>
+        $"APX-5{BitConverter.ToUInt32(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(test))) % 10_000_000:D7}";
+
+    private async Task<string> CreateShipmentAsync(string city = "Sydney", [System.Runtime.CompilerServices.CallerMemberName] string test = "")
     {
-        var trackingNumber = NextTrackingNumber();
+        // xUnit makes a new instance for every test, so this count belongs to one test only.
+        var trackingNumber = TrackingNumberFor($"{test}#{++_shipmentsCreated}");
         await using var db = database.CreateContext();
         // Created at the start, an hour before "now", so scans made in between are neither early nor in the future.
-        var result = await database.CreateService(db, new TestClock(TestClock.Start)).CreateAsync(new NewShipment(trackingNumber, "B001", Make.Recipient(city), 1.25m));
+        var result = await database.CreateService(db, new FakeTimeProvider(TestTime.Start)).CreateAsync(new NewShipment(trackingNumber, "B001", Make.Recipient(city), 1.25m));
         Assert.True(result.Succeeded, result.Error?.Detail);
         return trackingNumber;
     }
 
     [SqlServerFact]
-    public async Task The_migration_creates_the_tracking_schema_beside_week_3()
+    public async Task Migration_FreshDatabase_CreatesTrackingSchemaBesideWeek3()
     {
+        // Arrange
         await using var db = database.CreateContext();
 
+        // Act
         var tables = await db.Database
             .SqlQueryRaw<string>("SELECT TABLE_SCHEMA + '.' + TABLE_NAME AS [Value] FROM INFORMATION_SCHEMA.TABLES ORDER BY 1")
             .ToListAsync();
 
+        // Assert
         Assert.Equal(["tracking.__EFMigrationsHistory", "tracking.Scans", "tracking.Shipments"], tables);
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());
     }
 
     [SqlServerFact]
-    public async Task The_unique_index_turns_a_racing_duplicate_into_DuplicateValueException()
+    public async Task SaveChanges_RacingDuplicate_ThrowsDuplicateValueException()
     {
+        // Arrange
         var trackingNumber = await CreateShipmentAsync();
         await using var db = database.CreateContext();
         var store = new EfShipmentStore(db);
 
-        store.Add(Shipment.Create(trackingNumber, "B001", Make.Recipient(), 1m, _clock.Now));
+        store.Add(Shipment.Create(trackingNumber, "B001", Make.Recipient(), 1m, _clock.GetUtcNow()));
 
+        // Act and assert
         await Assert.ThrowsAsync<DuplicateValueException>(() => store.SaveChangesAsync());
     }
 
     [SqlServerFact]
-    public async Task The_row_version_turns_a_lost_update_into_a_conflict()
+    public async Task SaveChanges_LostUpdate_ThrowsConcurrencyConflict()
     {
+        // Arrange
         var trackingNumber = await CreateShipmentAsync();
         await using var first = database.CreateContext();
         await using var second = database.CreateContext();
         var firstService = database.CreateService(first, _clock);
         var secondStore = new EfShipmentStore(second);
+
+        // Act
         var stale = await secondStore.FindAsync(trackingNumber);
 
+        // Assert
         Assert.True((await firstService.ChangeStatusAsync(trackingNumber, ShipmentStatus.PickedUp)).Succeeded);
-        stale!.MoveTo(ShipmentStatus.PickedUp, _clock.Now);
 
+        // Arrange (next step)
+        stale!.MoveTo(ShipmentStatus.PickedUp, _clock.GetUtcNow());
+
+        // Act and assert
         await Assert.ThrowsAsync<ConcurrencyConflictException>(() => secondStore.SaveChangesAsync());
     }
 
     [SqlServerFact]
-    public async Task Parallel_uploads_of_one_batch_store_each_scan_exactly_once()
+    public async Task UploadScans_ParallelSameBatch_StoresEachScanOnce()
     {
+        // Arrange
         var trackingNumber = await CreateShipmentAsync();
-        var batch = Enumerable.Range(0, 20).Select(index => Make.Scan(at: TestClock.Start.AddMinutes(index))).ToList();
+        var batch = Enumerable.Range(0, 20).Select(index => Make.Scan(at: TestTime.Start.AddMinutes(index))).ToList();
 
+        // Act
         var outcomes = await Task.WhenAll(Enumerable.Range(0, 4).Select(async _ =>
         {
             await using var db = database.CreateContext();
             return (await database.CreateService(db, _clock).UploadScansAsync(trackingNumber, batch, Make.CourierId)).Value!;
         }));
 
+        // Assert
         Assert.Equal(20, outcomes.Sum(outcome => outcome.Accepted));
         Assert.Equal(60, outcomes.Sum(outcome => outcome.DuplicatesSkipped));
         Assert.All(outcomes, outcome => Assert.Equal(0, outcome.Rejected));
+
+        // Arrange (next step)
         await using var check = database.CreateContext();
+
+        // Act
         var shipment = await check.Shipments.SingleAsync(item => item.TrackingNumber == trackingNumber);
+
+        // Assert
         Assert.Equal(20, await check.Scans.CountAsync(scan => scan.ShipmentId == shipment.Id));
     }
 
     [SqlServerFact]
-    public async Task List_filters_case_insensitively_and_carries_the_latest_scan()
+    public async Task ListAsync_CityInOtherCase_FiltersAndCarriesLatestScan()
     {
+        // Arrange
         var city = $"City{Guid.NewGuid():N}"[..20];
         var withScans = await CreateShipmentAsync(city);
         var withoutScans = await CreateShipmentAsync(city);
         await using (var db = database.CreateContext())
         {
             await database.CreateService(db, _clock).UploadScansAsync(withScans, [
-                Make.Scan(type: ScanType.Pickup, at: TestClock.Start.AddMinutes(5)),
-                Make.Scan(type: ScanType.InTransit, at: TestClock.Start.AddMinutes(25)),
+                Make.Scan(type: ScanType.Pickup, at: TestTime.Start.AddMinutes(5)),
+                Make.Scan(type: ScanType.InTransit, at: TestTime.Start.AddMinutes(25)),
             ], Make.CourierId);
         }
 
         await using var read = database.CreateContext();
+
+        // Act
         var page = await new EfShipmentStore(read).ListAsync(new ShipmentQuery(1, 50, ShipmentStatus.Created, city.ToUpperInvariant()));
 
+        // Assert
         Assert.Equal(2, page.TotalCount);
+
+        // Act
         var views = page.Items.ToDictionary(view => view.TrackingNumber);
+
+        // Assert
         Assert.Equal(ScanType.InTransit, views[withScans].LatestScan?.ScanType);
         Assert.Null(views[withoutScans].LatestScan);
     }
 
     [SqlServerFact]
-    public async Task Deleting_a_shipment_deletes_its_scans()
+    public async Task Remove_ShipmentWithScans_DeletesItsScans()
     {
+        // Arrange
         var trackingNumber = await CreateShipmentAsync();
         await using var db = database.CreateContext();
         var service = database.CreateService(db, _clock);
+
+        // Act
         await service.UploadScansAsync(trackingNumber, [Make.Scan()], Make.CourierId);
 
+        // Assert
         Assert.True((await service.DeleteAsync(trackingNumber)).Succeeded);
 
         Assert.False(await db.Shipments.AnyAsync(item => item.TrackingNumber == trackingNumber));
@@ -186,20 +224,23 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
     }
 
     [SqlServerFact]
-    public async Task The_database_itself_refuses_a_delivered_scan_without_a_signature()
+    public async Task CheckConstraint_DeliveredScanWithoutSignature_IsRejected()
     {
+        // Arrange
         var trackingNumber = await CreateShipmentAsync();
         await using var db = database.CreateContext();
         var shipment = await db.Shipments.SingleAsync(item => item.TrackingNumber == trackingNumber);
-        db.Scans.Add(TrackingScan.Record(Guid.NewGuid(), shipment.Id, ScanType.Delivered, "CR-1", "Door", _clock.Now, null, null, _clock.Now));
+        db.Scans.Add(TrackingScan.Record(Guid.NewGuid(), shipment.Id, ScanType.Delivered, "CR-1", "Door", _clock.GetUtcNow(), null, null, _clock.GetUtcNow()));
 
+        // Act and assert
         var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         Assert.Contains("CK_Scans_DeliveredSignature", error.InnerException?.Message);
     }
 
     [SqlServerFact]
-    public async Task The_api_runs_end_to_end_against_sql_server()
+    public async Task Api_EndToEndAgainstSqlServer_Succeeds()
     {
+        // Arrange
         await using var factory = new WebApplicationFactory<api::Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
@@ -214,15 +255,18 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         });
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new("Bearer", ApiFactory.Token(ApexPostRoles.Admin, ApexPostRoles.Courier));
-        var trackingNumber = NextTrackingNumber();
+        var trackingNumber = TrackingNumberFor(nameof(Api_EndToEndAgainstSqlServer_Succeeds));
 
         var created = await client.PostAsJsonAsync("/api/v2/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));
-        var batch = new { scans = new[] { new { scanId = Make.NewScanId(), scanType = "Pickup", courierId = "CR-1001", location = "Depot", scannedAtUtc = _clock.Now } } };
+        var batch = new { scans = new[] { new { scanId = Make.NewScanId(), scanType = "Pickup", courierId = "CR-1001", location = "Depot", scannedAtUtc = _clock.GetUtcNow() } } };
         var first = await client.PostAsJsonAsync($"/api/v2/shipments/{trackingNumber}/scans", batch);
         var again = await client.PostAsJsonAsync($"/api/v2/shipments/{trackingNumber}/scans", batch);
         var history = await client.GetFromJsonAsync<JsonElement>($"/api/v2/shipments/{trackingNumber}/scans");
+
+        // Act
         var duplicate = await client.PostAsJsonAsync("/api/v2/shipments", ShipmentEndpointTests.NewShipment(trackingNumber));
 
+        // Assert
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         Assert.Equal(1, (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accepted").GetInt32());
         Assert.Equal(1, (await again.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("duplicatesSkipped").GetInt32());

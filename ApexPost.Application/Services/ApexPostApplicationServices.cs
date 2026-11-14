@@ -284,6 +284,7 @@ public sealed class TransactionService
     private readonly IDomainEventDispatcher _eventDispatcher;
     private readonly TransactionRules _rules;
     private readonly LowStockRule _lowStockRule;
+    private readonly TimeProvider _clock;
     public Money HighValueMoneyOrderThreshold => _rules.HighValueMoneyOrderThreshold;
 
     public TransactionService(
@@ -298,7 +299,8 @@ public sealed class TransactionService
         IIdentityVerificationService identityVerification,
         IDomainEventDispatcher eventDispatcher,
         TransactionRules rules,
-        LowStockRule? lowStockRule = null)
+        LowStockRule? lowStockRule = null,
+        TimeProvider? clock = null)
     {
         _transactions = transactions;
         _branches = branches;
@@ -312,6 +314,9 @@ public sealed class TransactionService
         _eventDispatcher = eventDispatcher;
         _rules = rules;
         _lowStockRule = lowStockRule ?? LowStockRule.Default;
+
+        // The business date and the opening-hours check come from this clock, so tests can fix the time.
+        _clock = clock ?? TimeProvider.System;
     }
 
     public async Task<Transaction> CheckoutAsync(
@@ -429,7 +434,7 @@ public sealed class TransactionService
             ?? throw new UnauthorizedDomainActionException("Staff not found.");
 
         clerk.EnsureCanTransact(selectedBranch.Id);
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.GetUtcNow();
         selectedBranch.EnsureAcceptsTransaction(now);
         selectedBranch.EnsureHasCounter(counterId);
 
@@ -471,7 +476,7 @@ public sealed class TransactionService
         var clerk = await _staff.GetByIdAsync(transaction.ClerkStaffId, ct)
             ?? throw new UnauthorizedDomainActionException("Staff not found.");
         clerk.EnsureCanTransact(branch.Id);
-        branch.EnsureAcceptsTransaction(DateTimeOffset.UtcNow);
+        branch.EnsureAcceptsTransaction(_clock.GetUtcNow());
         branch.EnsureHasCounter(transaction.CounterId);
 
         // One query for the whole basket, however many lines it has.

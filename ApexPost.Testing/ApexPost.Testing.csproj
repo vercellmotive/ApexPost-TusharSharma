@@ -34,6 +34,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Test configuration: the fictional Week 3 demo sign-in pattern. Copied next to every test assembly. -->
+    <None Include="testsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

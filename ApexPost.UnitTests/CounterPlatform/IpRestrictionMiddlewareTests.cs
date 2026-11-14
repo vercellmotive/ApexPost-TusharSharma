@@ -12,6 +12,7 @@ public sealed class IpRestrictionMiddlewareTests
     [Fact]
     public async Task RestrictedEndpoint_RejectsRemoteIpOutsideAllowlist()
     {
+        // Arrange
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.9");
         context.SetEndpoint(new Endpoint(
@@ -25,8 +26,10 @@ public sealed class IpRestrictionMiddlewareTests
             return Task.CompletedTask;
         }, new TestOptionsMonitor<SecurityOptions>(new SecurityOptions { AllowedIps = ["127.0.0.1"] }));
 
+        // Act
         await middleware.InvokeAsync(context);
 
+        // Assert
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
         Assert.False(nextCalled);
     }
@@ -34,6 +37,7 @@ public sealed class IpRestrictionMiddlewareTests
     [Fact]
     public async Task UnmarkedEndpoint_IsNotBlockedByIpAllowlist()
     {
+        // Arrange
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.9");
         var nextCalled = false;
@@ -43,8 +47,10 @@ public sealed class IpRestrictionMiddlewareTests
             return Task.CompletedTask;
         }, new TestOptionsMonitor<SecurityOptions>(new SecurityOptions { AllowedIps = ["127.0.0.1"] }));
 
+        // Act
         await middleware.InvokeAsync(context);
 
+        // Assert
         Assert.True(nextCalled);
     }
 }

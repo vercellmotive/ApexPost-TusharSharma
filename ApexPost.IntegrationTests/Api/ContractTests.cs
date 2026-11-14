@@ -20,25 +20,32 @@ public sealed class ContractTests : IDisposable
     [Theory]
     [InlineData("v1")]
     [InlineData("v2")]
-    public async Task The_served_document_matches_the_committed_contract(string version)
+    public async Task ServedDocument_ComparedWithContractsFolder_MatchesCommittedContract(string version)
     {
+        // Arrange
         var served = await _development.CreateAnonymousClient().GetStringAsync($"/openapi/{version}.json");
         var path = Path.Combine(RepositoryRoot(), "contracts", $"{version}.json");
 
+        // Act
         if (Environment.GetEnvironmentVariable("APEXPOST_UPDATE_CONTRACTS") == "1")
         {
             await File.WriteAllTextAsync(path, Pretty(served) + "\n");
         }
 
+        // Assert
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(served), JsonNode.Parse(await File.ReadAllTextAsync(path))),
             $"/openapi/{version}.json differs from contracts/{version}.json. If the change is intended, update the contract and VERSIONING.md.");
     }
 
     [Fact]
-    public async Task Both_documents_are_titled_versioned_and_v1_is_deprecated()
+    public async Task OpenApiDocuments_BothVersions_AreTitledVersionedAndV1Deprecated()
     {
+        // Arrange
         var client = _development.CreateClient();
+
+        // Act and assert
         var v1 = JsonNode.Parse(await client.GetStringAsync("/openapi/v1.json"))!;
+
         var v2 = JsonNode.Parse(await client.GetStringAsync("/openapi/v2.json"))!;
 
         Assert.Equal("ApexPost Logistics API", (string?)v1["info"]!["title"]);
@@ -53,8 +60,9 @@ public sealed class ContractTests : IDisposable
     }
 
     [Fact]
-    public async Task Every_operation_declares_its_error_responses_and_a_tag()
+    public async Task OpenApiOperations_Every_DeclaresErrorResponsesAndTag()
     {
+        // Act and assert
         var v2 = JsonNode.Parse(await _development.CreateClient().GetStringAsync("/openapi/v2.json"))!;
 
         foreach (var operation in Operations(v2))
@@ -69,14 +77,22 @@ public sealed class ContractTests : IDisposable
     }
 
     [Fact]
-    public async Task V2_declares_the_bearer_and_api_key_schemes_and_uses_them()
+    public async Task OpenApiV2_SecuritySchemes_DeclaresAndUsesBearerAndApiKey()
     {
+        // Act and assert
         var v2 = JsonNode.Parse(await _development.CreateClient().GetStringAsync("/openapi/v2.json"))!;
 
+        // Act
         var schemes = v2["components"]!["securitySchemes"]!;
+
+        // Assert
         Assert.Equal("bearer", (string?)schemes["Bearer"]!["scheme"]);
         Assert.Equal("X-Api-Key", (string?)schemes["ApiKey"]!["name"]);
+
+        // Act
         var partner = v2["paths"]!["/api/v2/partner/shipments/{trackingNumber}"]!["get"]!;
+
+        // Assert
         Assert.NotNull(partner["security"]![0]!["ApiKey"]);
         Assert.NotNull(v2["paths"]!["/api/v2/shipments"]!["get"]!["security"]![0]!["Bearer"]);
     }
@@ -85,10 +101,12 @@ public sealed class ContractTests : IDisposable
     [InlineData("/openapi/v1.json")]
     [InlineData("/openapi/v2.json")]
     [InlineData("/swagger/index.html")]
-    public async Task The_documents_and_swagger_ui_exist_only_in_development(string path)
+    public async Task OpenApiAndSwaggerUi_OutsideDevelopment_AreNotServed(string path)
     {
+        // Arrange
         using var production = new ApiFactory("Production");
 
+        // Act and assert
         Assert.Equal(HttpStatusCode.OK, (await _development.CreateClient().GetAsync(path)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await production.CreateClient().GetAsync(path)).StatusCode);
     }

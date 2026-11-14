@@ -8,8 +8,9 @@ namespace ApexPost.UnitTests.CounterPlatform;
 public sealed class MaintenanceModeMiddlewareTests
 {
     [Fact]
-    public async Task MaintenanceModeReturns503AndRetryAfterForApplicationPages()
+    public async Task ApplicationPage_DuringMaintenance_Returns503WithRetryAfter()
     {
+        // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/Catalog";
         var nextCalled = false;
@@ -19,16 +20,19 @@ public sealed class MaintenanceModeMiddlewareTests
             return Task.CompletedTask;
         });
 
+        // Act
         await middleware.InvokeAsync(context);
 
+        // Assert
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, context.Response.StatusCode);
         Assert.Equal("120", context.Response.Headers.RetryAfter);
         Assert.False(nextCalled);
     }
 
     [Fact]
-    public async Task HealthEndpointRemainsAvailableDuringMaintenance()
+    public async Task HealthEndpoint_DuringMaintenance_RemainsAvailable()
     {
+        // Arrange
         var context = new DefaultHttpContext();
         context.Request.Path = "/health";
         var middleware = CreateMiddleware(_ =>
@@ -37,8 +41,10 @@ public sealed class MaintenanceModeMiddlewareTests
             return Task.CompletedTask;
         });
 
+        // Act
         await middleware.InvokeAsync(context);
 
+        // Assert
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
     }
 

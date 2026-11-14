@@ -17,23 +17,29 @@ public sealed class CourierRateConcurrencyTests
     [Fact]
     public async Task RateLookups_NeverExceedTheConfiguredConcurrencyLimit()
     {
+        // Arrange
         var zones = new TrackingZoneLookup();
         var service = new SimulatedCourierRateService(new TieredShippingPricingStrategy(), zones, new CourierRateGate(3), TimeSpan.Zero);
 
+        // Act
         await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => service.GetEstimatedCourierRateAsync(Parcel)));
 
+        // Assert
         Assert.InRange(zones.MaxInFlight, 2, 3);
     }
 
     [Fact]
     public async Task ZoneLookup_LoadsTheRepositoryOnceAndMatchesAnyCase()
     {
+        // Arrange
         var repository = new CountingZoneRepository();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var lookup = new CachedShippingZoneLookup(repository, cache);
 
+        // Act
         await Task.WhenAll(Enumerable.Range(0, 200).Select(_ => lookup.FindByNameAsync("ZONE 1").AsTask()));
 
+        // Assert
         Assert.Equal(1, repository.LoadCount);
         Assert.Equal(1.5m, (await lookup.FindByNameAsync("zone 1"))!.Multiplier);
         Assert.Null(await lookup.FindByNameAsync("Zone 99"));

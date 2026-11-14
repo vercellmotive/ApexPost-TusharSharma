@@ -13,24 +13,34 @@ public sealed class ClientSdkTests : IDisposable
     public void Dispose() => _factory.Dispose();
 
     [Fact]
-    public async Task The_console_consumer_completes_every_step()
+    public async Task ConsumerRun_AgainstInProcessApi_CompletesEveryStep()
     {
+        // Arrange
         var output = new StringWriter();
         var demo = new ConsumerDemo(new ApexPostClient(_factory.CreateClient()), _factory.Clock);
 
+        // Act
         var exitCode = await demo.RunAsync(output, CancellationToken.None);
 
+        // Assert
         Assert.Equal(0, exitCode);
+
+        // Act
         var lines = output.ToString();
+
+        // Assert
         Assert.Contains("Uploaded 2 scans: 2 accepted, 0 duplicates skipped, 0 rejected", lines);
         Assert.Contains("Latest   InTransit at Sydney hub", lines);
         Assert.Contains("Handled  404: Shipment not found.", lines);
     }
 
     [Fact]
-    public async Task The_client_reads_v2_shapes_and_raises_typed_problem_details()
+    public async Task GeneratedClient_V2Responses_ReadsShapesAndRaisesTypedProblemDetails()
     {
+        // Arrange
         var client = new ApexPostClient(_factory.CreateClient());
+
+        // Act
         var created = await client.CreateShipmentAsync(new CreateShipmentRequest
         {
             TrackingNumber = "APX-20000001",
@@ -42,6 +52,7 @@ public sealed class ClientSdkTests : IDisposable
             WeightKg = 2.5,
         });
 
+        // Assert
         Assert.Equal(ShipmentStatus.Created, created.Status);
         Assert.Equal("Sydney", created.Recipient.City);
         Assert.Null(await client.FindShipmentAsync("APX-99999999"));

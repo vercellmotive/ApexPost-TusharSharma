@@ -55,22 +55,13 @@ public sealed class TestCourierDatabase : IDisposable
 
 public static class Wait
 {
-    /// <summary>Polls until the condition is true. Change notifications arrive on another thread, so tests wait for them.</summary>
-    public static bool Until(Func<bool> condition, int timeoutMilliseconds = 10_000)
-    {
-        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (condition())
-            {
-                return true;
-            }
-
-            Thread.Sleep(10);
-        }
-
-        return condition();
-    }
+    /// <summary>
+    /// Waits until the condition is true. Change notifications arrive on another thread, so a test waits for the state
+    /// it needs instead of sleeping for a fixed time. The bound only stops a broken test from hanging; a passing test
+    /// returns as soon as the condition holds, so the result does not depend on how fast the machine is.
+    /// </summary>
+    public static bool Until(Func<bool> condition, int timeoutMilliseconds = 10_000) =>
+        SpinWait.SpinUntil(condition, timeoutMilliseconds);
 }
 
 public static class Scans

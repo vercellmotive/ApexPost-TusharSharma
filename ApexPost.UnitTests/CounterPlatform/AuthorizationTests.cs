@@ -11,6 +11,7 @@ public sealed class AuthorizationTests
     [Fact]
     public async Task SameBranchPolicy_RejectsAnotherBranchRouteValue()
     {
+        // Arrange
         var requirement = new SameBranchRequirement();
         var identity = new ClaimsIdentity([new Claim("BranchCode", "B001")], "test");
         var context = new DefaultHttpContext();
@@ -20,14 +21,17 @@ public sealed class AuthorizationTests
             new ClaimsPrincipal(identity),
             context);
 
+        // Act
         await new SameBranchAuthorizationHandler().HandleAsync(authorizationContext);
 
+        // Assert
         Assert.False(authorizationContext.HasSucceeded);
     }
 
     [Fact]
     public async Task SameBranchPolicy_AllowsAssignedBranch()
     {
+        // Arrange
         var requirement = new SameBranchRequirement();
         var identity = new ClaimsIdentity([new Claim("BranchCode", "B001")], "test");
         var context = new DefaultHttpContext();
@@ -37,8 +41,10 @@ public sealed class AuthorizationTests
             new ClaimsPrincipal(identity),
             context);
 
+        // Act
         await new SameBranchAuthorizationHandler().HandleAsync(authorizationContext);
 
+        // Assert
         Assert.True(authorizationContext.HasSucceeded);
     }
 }

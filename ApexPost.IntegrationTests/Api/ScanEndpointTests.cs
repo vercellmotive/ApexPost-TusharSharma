@@ -28,19 +28,23 @@ public sealed class ScanEndpointTests : IDisposable
         ["scanType"] = type,
         ["courierId"] = "CR-1001",
         ["location"] = "Sydney depot",
-        ["scannedAtUtc"] = at ?? TestClock.Start.AddMinutes(30),
+        ["scannedAtUtc"] = at ?? TestTime.Start.AddMinutes(30),
         ["notes"] = "Fictional",
         ["recipientSignatureName"] = signature,
     };
 
     [Fact]
-    public async Task Re_uploading_the_same_scans_skips_them_as_duplicates()
+    public async Task PostScans_SameBatchTwice_SkipsRepeatsAsDuplicates()
     {
+        // Arrange
         var batch = new { scans = new[] { Scan(), Scan(type: "InTransit") } };
 
         var first = await _client.PostAsJsonAsync(Scans, batch);
+
+        // Act
         var second = await _client.PostAsJsonAsync(Scans, batch);
 
+        // Assert
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal((2, 0, 0), Counts(await first.Content.ReadFromJsonAsync<JsonElement>()));
         Assert.Equal((0, 2, 0), Counts(await second.Content.ReadFromJsonAsync<JsonElement>()));
@@ -48,33 +52,48 @@ public sealed class ScanEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task Rejected_scans_are_counted_and_explained()
+    public async Task PostScans_ScansBreakingServerRules_CountsAndExplainsRejections()
     {
-        var early = Scan(at: TestClock.Start.AddHours(-2));
+        // Arrange
+        var early = Scan(at: TestTime.Start.AddHours(-2));
+
+        // Act
         var response = await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(), early } });
 
+        // Assert
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
         Assert.Equal((1, 0, 1), Counts(body));
+
+        // Act
         var rejection = body.GetProperty("rejections")[0];
+
+        // Assert
         Assert.Equal(early["scanId"], rejection.GetProperty("scanId").GetString());
         Assert.Contains("before the shipment was created", rejection.GetProperty("reason").GetString());
     }
 
     [Fact]
-    public async Task A_scan_from_the_future_fails_validation_with_the_custom_attribute()
+    public async Task PostScans_ScanTimeInFuture_Returns400FromCustomAttribute()
     {
-        var errors = await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(at: _factory.Clock.Now.AddHours(1)) } }));
+        // Act
+        var errors = await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(at: _factory.Clock.GetUtcNow().AddHours(1)) } }));
 
+        // Assert
         Assert.Contains("cannot be in the future", Assert.Single(errors["scans[0].scannedAtUtc"]));
     }
 
     [Fact]
-    public async Task A_delivered_scan_without_a_signature_fails_the_custom_validatable_rule()
+    public async Task PostScans_DeliveredWithoutSignature_Returns400FromValidatableRule()
     {
+        // Arrange
         var unsigned = await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(type: "Delivered") } });
         var signed = await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(type: "Delivered", signature: "Mia Fictional") } });
 
+        // Act
         var errors = await ReadValidationErrors(unsigned);
+
+        // Assert
         Assert.Contains("signed for it", Assert.Single(errors["scans[0].recipientSignatureName"]));
         Assert.Equal(HttpStatusCode.OK, signed.StatusCode);
     }
@@ -85,42 +104,53 @@ public sealed class ScanEndpointTests : IDisposable
     [InlineData("scanType", "Lost")]
     [InlineData("courierId", "CR 1001")]
     [InlineData("location", "")]
-    public async Task Bad_scan_fields_return_400(string field, string value)
+    public async Task PostScans_InvalidFields_Returns400(string field, string value)
     {
+        // Arrange
         var scan = Scan();
         scan[field] = value;
 
+        // Act
         var response = await _client.PostAsJsonAsync(Scans, new { scans = new[] { scan } });
 
+        // Assert
         await ReadProblem(response, HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task An_empty_or_oversized_batch_returns_400()
+    public async Task PostScans_EmptyOrOversizedBatch_Returns400()
     {
+        // Arrange
         var tooMany = Enumerable.Range(0, 101).Select(_ => Scan()).ToArray();
 
+        // Act and assert
         await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = Array.Empty<object>() }));
+
         await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = tooMany }));
     }
 
     [Fact]
-    public async Task Uploading_to_an_unknown_shipment_returns_404()
+    public async Task PostScans_UnknownShipment_Returns404()
     {
+        // Act
         var response = await _client.PostAsJsonAsync("/api/v2/shipments/APX-99999999/scans", new { scans = new[] { Scan() } });
 
+        // Assert
         await ReadProblem(response, HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task Scan_history_comes_back_oldest_first_with_part_a_ids()
+    public async Task GetScans_KnownShipment_ReturnsOldestFirstWithPartAIds()
     {
-        var later = Scan(type: "InTransit", at: TestClock.Start.AddMinutes(50));
-        var earlier = Scan(at: TestClock.Start.AddMinutes(10));
+        // Arrange
+        var later = Scan(type: "InTransit", at: TestTime.Start.AddMinutes(50));
+        var earlier = Scan(at: TestTime.Start.AddMinutes(10));
         await _client.PostAsJsonAsync(Scans, new { scans = new[] { later, earlier } });
 
+        // Act
         var history = await _client.GetFromJsonAsync<JsonElement>(Scans);
 
+        // Assert
         Assert.Equal([earlier["scanId"], later["scanId"]], history.EnumerateArray().Select(scan => (object?)scan.GetProperty("scanId").GetString()));
         Assert.Equal("Pickup", history[0].GetProperty("scanType").GetString());
         await ReadProblem(await _client.GetAsync("/api/v2/shipments/APX-99999999/scans"), HttpStatusCode.NotFound);

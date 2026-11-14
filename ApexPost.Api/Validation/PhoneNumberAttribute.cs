@@ -23,7 +23,7 @@ public sealed partial class PhoneNumberAttribute()
     // NonBacktracking matches in time proportional to the text, so a long string of digits ending in a bad
     // character cannot make the pattern take exponential time.
     [GeneratedRegex(@"^\+?(?:[0-9]+|\([0-9]+\))(?:[ -]?(?:[0-9]+|\([0-9]+\)))*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
-    private static partial Regex Shape();
+    internal static partial Regex Shape();
 
     /// <inheritdoc />
     public override bool IsValid(object? value)

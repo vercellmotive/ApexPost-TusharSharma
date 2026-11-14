@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using ApexPost.Testing.Tracking;
+using Microsoft.Extensions.Time.Testing;
 
 namespace ApexPost.Testing.Api;
 
@@ -24,11 +25,17 @@ namespace ApexPost.Testing.Api;
 /// </summary>
 public sealed class ApiFactory(string environment = "Testing") : WebApplicationFactory<api::Program>
 {
-    // Test-only values. They sign tokens in memory and are never used outside these tests.
+    // Test-only values. The keys are generated for each test run, so no key is written in the code or committed.
     public const string Issuer = "https://identity.test.example";
     public const string Audience = "apexpost-api-tests";
-    public static readonly string SigningKey = Convert.ToBase64String(SHA256.HashData("apexpost-test-signing-key"u8));
-    public const string PartnerKey = "test-partner-key-0123456789abcdef0123";
+    public static readonly string SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    public static readonly string PartnerKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+
+    // Token lifetimes are fixed dates, not "now plus 30 minutes". The bearer handler checks them against the real
+    // clock, so a token valid until 2099 is always valid and one that expired in 2021 is always expired.
+    public static readonly DateTimeOffset ValidUntil = new(2099, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    public static readonly DateTimeOffset ExpiredAt = new(2021, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    public static readonly DateTimeOffset IssuedAt = new(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
     public static void UseTestSecurity(IWebHostBuilder builder)
     {
@@ -54,14 +61,14 @@ public sealed class ApiFactory(string environment = "Testing") : WebApplicationF
             claims.Add(new Claim(ApexPostRoles.CourierIdClaim, courierId));
         }
 
-        var end = expires ?? DateTimeOffset.UtcNow.AddMinutes(30);
+        var end = expires ?? ValidUntil;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = issuer,
             Audience = audience,
             Subject = new ClaimsIdentity(claims),
-            NotBefore = end.AddHours(-2).UtcDateTime,
-            IssuedAt = end.AddHours(-2).UtcDateTime,
+            NotBefore = IssuedAt.UtcDateTime,
+            IssuedAt = IssuedAt.UtcDateTime,
             Expires = end.UtcDateTime,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Convert.FromBase64String(signingKey ?? SigningKey)), SecurityAlgorithms.HmacSha256),
         });
@@ -81,7 +88,7 @@ public sealed class ApiFactory(string environment = "Testing") : WebApplicationF
     public new HttpClient CreateClient() => CreateClient(Token(ApexPostRoles.Admin, ApexPostRoles.Courier));
 
     public InMemoryShipmentStore Store { get; } = new();
-    public TestClock Clock { get; } = new();
+    public FakeTimeProvider Clock { get; } = TestTime.NewClock();
 
     /// <summary>When set, every store call throws this, to exercise the global exception handler.</summary>
     public Exception? StoreFailure { get; set; }

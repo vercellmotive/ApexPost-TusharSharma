@@ -26,8 +26,10 @@ public sealed class PersistenceModelTests
     [Fact]
     public void Model_HasNoChangesMissingFromMigrations()
     {
+        // Act
         using var db = CreateContext();
 
+        // Assert
         Assert.False(db.Database.HasPendingModelChanges());
         Assert.Equal(
             ["InitialCreate", "AddWorkloadIndexes", "AddStoredProcedures", "AddRemainingAuditColumns", "ReplaceLowStockIndexWithFiltered", "AddShipmentDestinationAddress", "StampCreatedByInAdjustStock", "AddShipmentDimensionsCheck", "ValidateChangedByInAdjustStock", "TightenPaymentAndRoleColumns", "DropRedundantShippingRateIndex"],
@@ -37,13 +39,18 @@ public sealed class PersistenceModelTests
     [Fact]
     public void BranchCodeAndSku_AreUniqueConstraints_AndStaffEmailIsAUniqueIndex()
     {
+        // Act
         using var db = CreateContext();
 
+        // Assert
         Assert.Contains(db.Model.FindEntityType(typeof(BranchRecord))!.GetKeys(), key => key.GetName() == "UQ_Branches_BranchCode");
         Assert.Contains(db.Model.FindEntityType(typeof(ProductRecord))!.GetKeys(), key => key.GetName() == "UQ_Products_Sku");
 
+        // Act
         // Email is an index rather than a key, because EF Core makes a key value read-only once it is saved.
         var staff = db.Model.FindEntityType(typeof(Staff))!;
+
+        // Assert
         Assert.Contains(staff.GetIndexes(), index => index.IsUnique && index.GetDatabaseName() == "UQ_Staff_Email");
         Assert.DoesNotContain(staff.GetKeys(), key => key.Properties.Any(property => property.Name == nameof(Staff.Email)));
     }
@@ -51,13 +58,16 @@ public sealed class PersistenceModelTests
     [Fact]
     public void EveryNameColumn_IsUnicode()
     {
+        // Arrange
         using var db = CreateContext();
 
+        // Act
         var nameColumns = db.Model.GetEntityTypes()
             .SelectMany(entity => entity.GetProperties())
             .Where(property => property.Name == "Name" && property.ClrType == typeof(string))
             .ToList();
 
+        // Assert
         Assert.NotEmpty(nameColumns);
         Assert.All(nameColumns, property => Assert.StartsWith("nvarchar", property.GetColumnType()));
     }
@@ -82,8 +92,10 @@ public sealed class PersistenceModelTests
     [InlineData("AuditEntries")]
     public void Schema_ContainsEveryRequiredTable(string table)
     {
+        // Act
         using var db = CreateContext();
 
+        // Assert
         Assert.Contains(db.Model.GetEntityTypes(), entity => entity.GetTableName() == table);
     }
 
@@ -92,9 +104,13 @@ public sealed class PersistenceModelTests
     [InlineData(typeof(CounterTransactionRecord))]
     public void ConcurrencyTables_HaveARowVersionShadowProperty(Type entityType)
     {
+        // Arrange
         using var db = CreateContext();
 
+        // Act
         var rowVersion = db.Model.FindEntityType(entityType)!.FindProperty(AuditColumns.RowVersion)!;
+
+        // Assert
         Assert.True(rowVersion.IsShadowProperty());
         Assert.True(rowVersion.IsConcurrencyToken);
         Assert.Equal("rowversion", rowVersion.GetColumnType());
@@ -103,16 +119,23 @@ public sealed class PersistenceModelTests
     [Fact]
     public void WorkloadIndexes_DeclaredByAttributeAlsoCarryTheirFluentOptions()
     {
+        // Arrange
         using var db = CreateContext();
         var model = db.GetService<IDesignTimeModel>().Model;
 
+        // Act
         var moneyOrders = model.FindEntityType(typeof(MoneyOrderRecord))!.GetIndexes()
             .Single(index => index.Name == IndexNames.HighValueMoneyOrder);
+
+        // Assert
         Assert.Equal("[Amount] > 1000", moneyOrders.GetFilter());
         Assert.Equal(["Fee", "TransactionLineId"], moneyOrders.GetIncludeProperties()!);
 
+        // Act
         var sales = model.FindEntityType(typeof(CounterTransactionRecord))!.GetIndexes()
             .Single(index => index.Name == IndexNames.TransactionByBranchAndDate);
+
+        // Assert
         Assert.Equal(["BranchCode", "BusinessDate"], sales.Properties.Select(property => property.Name));
         Assert.Equal(["Status"], sales.GetIncludeProperties()!);
     }
@@ -120,9 +143,13 @@ public sealed class PersistenceModelTests
     [Fact]
     public void MaskedDocumentColumn_CannotHoldAFullDocumentNumber()
     {
+        // Arrange
         using var db = CreateContext();
 
+        // Act
         var entity = db.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(IdentityVerificationRecord))!;
+
+        // Assert
         Assert.Equal("varchar(10)", entity.FindProperty(nameof(IdentityVerificationRecord.MaskedDocumentNumber))!.GetColumnType());
         Assert.Contains(entity.GetCheckConstraints(), check => check.Name == "CK_IdentityVerifications_Masked");
     }
@@ -130,10 +157,13 @@ public sealed class PersistenceModelTests
     [Fact]
     public void IdempotentScript_DeploysProceduresInTheirOwnBatches()
     {
+        // Arrange
         using var db = CreateContext();
 
+        // Act
         var script = db.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
 
+        // Assert
         foreach (var procedure in new[] { "usp_DailyBranchSales", "usp_LowStockReport", "usp_AdjustStock" })
         {
             Assert.Contains($"CREATE OR ALTER PROCEDURE dbo.{procedure}", script);
@@ -145,7 +175,10 @@ public sealed class PersistenceModelTests
     [Fact]
     public void ReadQueries_TranslateToSqlWithoutTracking()
     {
+        // Arrange
         using var db = CreateContext();
+
+        // Act
         var captures = new Dictionary<string, string>
         {
             ["Low stock (screen and dashboard)"] = QueryShapes.LowStock(db, "B001", 5).ToQueryString(),
@@ -159,6 +192,7 @@ public sealed class PersistenceModelTests
             ["Product detail screen"] = QueryShapes.Products(db, "SKU-001").ToQueryString()
         };
 
+        // Assert
         Assert.All(captures.Values, sql => Assert.Contains("SELECT", sql));
         Assert.DoesNotContain("@__", captures["Low stock (screen and dashboard)"].Split('\n')[0]);
         Assert.Contains("[LineTotal]", captures["Branch transactions screen"]);
@@ -179,20 +213,27 @@ public sealed class PersistenceModelTests
     [Fact]
     public void BranchesAndDetailQueries_TranslateWithSplitQuery()
     {
+        // Arrange
         using var db = CreateContext();
 
+        // Act
         var sql = QueryShapes.Branches(db, "B001").AsSplitQuery().ToQueryString();
 
+        // Assert
         Assert.Contains("[BranchCode]", sql);
     }
 
     [Fact]
     public void RepositoryAndDashboardQueries_TranslateToSql()
     {
+        // Arrange
         using var db = CreateContext();
         var branch = new BranchCode("B001");
+
+        // Act
         var sku = new Sku("SKU-001");
 
+        // Assert
         Assert.Contains("[Counters]", QueryShapes.TrackedBranch(db, branch).ToQueryString());
         Assert.Contains("[ProductCategories]", QueryShapes.TrackedProduct(db, sku).ToQueryString());
         Assert.Contains("[RowVersion]", QueryShapes.TrackedStock(db, branch, [sku]).ToQueryString());
@@ -204,14 +245,17 @@ public sealed class PersistenceModelTests
     [Fact]
     public async Task PriceRevision_TranslatesToOneSetBasedUpdate()
     {
+        // Arrange
         var capture = new CaptureNonQuery();
         await using var db = new ApexPostDbContext(new DbContextOptionsBuilder<ApexPostDbContext>()
             .UseSqlServer("Server=model-only;Database=ApexPostDb;Integrated Security=true")
             .AddInterceptors(capture)
             .Options);
 
+        // Act
         await new PriceRevisionCommand(db).ReviseByCategoryAsync(ProductCategories.Stationery, 10m);
 
+        // Assert
         var sql = Assert.Single(capture.Commands);
         Assert.Contains("UPDATE", sql);
         Assert.Contains("ROUND", sql);
@@ -221,8 +265,10 @@ public sealed class PersistenceModelTests
     [Fact]
     public void EveryTable_HasAuditColumns()
     {
+        // Act
         using var db = CreateContext();
 
+        // Assert
         foreach (var entity in db.GetService<IDesignTimeModel>().Model.GetEntityTypes().Where(type => !type.IsOwned()))
         {
             foreach (var column in new[] { AuditColumns.CreatedAtUtc, AuditColumns.CreatedBy, AuditColumns.ModifiedAtUtc })
@@ -236,11 +282,14 @@ public sealed class PersistenceModelTests
     [Fact]
     public void InactiveFlags_AreSentExplicitlyOnInsert()
     {
+        // Arrange
         using var db = CreateContext();
         var staff = new Staff { Id = "STF900", Name = "N", Email = "n@example.test", Role = StaffRole.CounterClerk, HomeBranchCode = new BranchCode("B001"), IsActive = false };
 
+        // Act
         db.Staff.Add(staff);
 
+        // Assert
         // With a sentinel of true, EF Core only falls back to the database default when the value is true.
         Assert.False(db.Entry(staff).Property(person => person.IsActive).CurrentValue);
         Assert.Equal(true, db.Model.FindEntityType(typeof(Staff))!.FindProperty(nameof(Staff.IsActive))!.Sentinel);
@@ -249,8 +298,10 @@ public sealed class PersistenceModelTests
     [Fact]
     public void ReferenceRates_MatchThePricingAndWeightRules()
     {
+        // Act
         var rates = ReferenceData.ShippingRates().ToList();
 
+        // Assert
         Assert.Equal(60, rates.Count);
         Assert.Equal(60, rates.Select(rate => rate.Id).Distinct().Count());
         Assert.All(rates, rate => Assert.Equal(rate.Id, ReferenceData.ShippingRateId(rate.ZoneId, rate.IsParcel, rate.ServiceLevel)));
@@ -261,6 +312,7 @@ public sealed class PersistenceModelTests
     [Fact]
     public void TransactionMapper_RoundTripsEveryLineType()
     {
+        // Arrange
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
@@ -279,8 +331,11 @@ public sealed class PersistenceModelTests
         var record = PersistenceMapper.ToRecord(transaction);
         var rate = ReferenceData.ShippingRates().Single(item => item.Id == record.Lines[1].Shipment!.ShippingRateId);
         record.Lines[1].Shipment!.Rate = rate;
+
+        // Act
         var restored = PersistenceMapper.ToDomain(record);
 
+        // Assert
         Assert.Equal(transaction.GrandTotal, restored.GrandTotal);
         Assert.Equal(transaction.ServicesTotal, restored.ServicesTotal);
         Assert.Equal(TransactionStatus.Paid, restored.Status);
@@ -297,14 +352,18 @@ public sealed class PersistenceModelTests
     [Fact]
     public void Reversal_AddsAPaymentAndKeepsTheSalePayment()
     {
+        // Arrange
         var transaction = new Transaction { Id = Guid.NewGuid(), BranchCode = new BranchCode("B001"), CounterId = "C01", ClerkStaffId = "STF002" };
         transaction.AddLineItem(new TransactionLineItem(Guid.NewGuid(), "Tape", LineItemType.RetailProduct, 1, new Money(10m), TaxCategory.Exempt, new Sku("SKU-001")));
         transaction.Complete("Cash", new Money(1000m));
         var record = PersistenceMapper.ToRecord(transaction);
 
         transaction.Refund(new Staff { Id = "STF001", Name = "M", Email = "m@example.test", Role = StaffRole.BranchManager, HomeBranchCode = new BranchCode("B001") }, "Returned");
+
+        // Act
         PersistenceMapper.CopyStateTo(transaction, record);
 
+        // Assert
         Assert.Equal(TransactionStatus.Refunded, record.Status);
         Assert.Equal([PaymentKinds.Sale, PaymentKinds.Refund], record.Payments.Select(payment => payment.Kind));
         Assert.All(record.Payments, payment => Assert.Equal("Cash", payment.Method));
@@ -313,6 +372,7 @@ public sealed class PersistenceModelTests
     [Fact]
     public void HistoryGenerator_MeetsTheVolumeAndStaysValid()
     {
+        // Arrange
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         List<T> Read<T>(string file) => JsonSerializer.Deserialize<List<T>>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Data", file)), options)!;
         var branches = Read<Branch>("branch.json");
@@ -320,8 +380,11 @@ public sealed class PersistenceModelTests
         var seeded = Read<Transaction>("transaction.json");
 
         var first = DatabaseSeeder.BuildHistory(branches, staff, Read<Product>("product.json"), seeded, new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero));
+
+        // Act
         var second = DatabaseSeeder.BuildHistory(branches, staff, Read<Product>("product.json"), seeded, new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero));
 
+        // Assert
         Assert.True(first.Count >= 200);
         Assert.Equal(first.Sum(item => item.GrandTotal.Amount), second.Sum(item => item.GrandTotal.Amount));
         Assert.All(first, transaction =>
@@ -344,11 +407,17 @@ public sealed class PersistenceModelTests
     [Fact]
     public void DependencyDirection_PointsInward()
     {
+        // Act
         static IEnumerable<string> References<T>() =>
             typeof(T).Assembly.GetReferencedAssemblies().Select(assembly => assembly.Name!);
 
+        // Assert
         Assert.DoesNotContain(References<Branch>(), name => name.StartsWith("ApexPost", StringComparison.Ordinal) || name.Contains("EntityFramework", StringComparison.Ordinal));
+
+        // Act
         var application = References<IUnitOfWork>().ToList();
+
+        // Assert
         Assert.Contains("ApexPost.Domain", application);
         Assert.DoesNotContain(application, name => name.Contains("Infrastructure", StringComparison.Ordinal) || name.Contains("EntityFramework", StringComparison.Ordinal));
     }
@@ -356,10 +425,12 @@ public sealed class PersistenceModelTests
     [Fact]
     public void RepositoryContracts_NeverExposeIQueryableOrCommit()
     {
+        // Act
         var repositories = typeof(IUnitOfWork).Assembly.GetTypes()
             .Where(type => type.IsInterface && type.Name.EndsWith("Repository", StringComparison.Ordinal))
             .ToList();
 
+        // Assert
         Assert.True(repositories.Count >= 5);
         foreach (var method in repositories.SelectMany(type => type.GetMethods()))
         {
@@ -376,7 +447,10 @@ public sealed class PersistenceModelTests
     [Fact]
     public void ApplicationCode_NeverCallsEnsureCreated()
     {
+        // Arrange
         var root = FindSolutionRoot();
+
+        // Act
         var offenders = Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
@@ -384,6 +458,7 @@ public sealed class PersistenceModelTests
             .Where(file => File.ReadAllText(file).Contains("EnsureCreated", StringComparison.Ordinal))
             .ToList();
 
+        // Assert
         Assert.Empty(offenders);
     }
 

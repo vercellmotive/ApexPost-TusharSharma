@@ -9,7 +9,7 @@ Every response reports the versions in two headers, `api-supported-versions: 2.0
 The OpenAPI document of each version is committed in [`contracts/v1.json`](contracts/v1.json) and [`contracts/v2.json`](contracts/v2.json). `ContractTests` compares the documents the API serves with these files. A change that alters a contract fails the build until the file is updated on purpose and the change is listed below. To update the files after an intended change:
 
 ```bash
-APEXPOST_UPDATE_CONTRACTS=1 dotnet test ApexPost.Api.Tests --filter ContractTests
+APEXPOST_UPDATE_CONTRACTS=1 dotnet test ApexPost.IntegrationTests --filter ContractTests
 ```
 
 ## Changes

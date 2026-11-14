@@ -4,22 +4,20 @@ using ApexPost.Domain.Entities;
 using ApexPost.Domain.ValueObjects;
 using ApexPost.Tracking.Application;
 using ApexPost.Tracking.Domain;
+using Microsoft.Extensions.Time.Testing;
 
 namespace ApexPost.Testing.Tracking;
 
-public sealed class TestClock(DateTimeOffset now) : TimeProvider
+/// <summary>
+/// The fixed time every test starts from. Tests read time only from a <see cref="FakeTimeProvider"/>, never from the
+/// real clock, so they give the same result on every run.
+/// </summary>
+public static class TestTime
 {
     public static readonly DateTimeOffset Start = new(2026, 11, 9, 1, 0, 0, TimeSpan.Zero);
 
-    // An hour after the default shipment was created, so default scans (made 30 minutes after creation) are in the past.
-    public TestClock()
-        : this(Start.AddHours(1))
-    {
-    }
-
-    public DateTimeOffset Now { get; set; } = now;
-
-    public override DateTimeOffset GetUtcNow() => Now;
+    /// <summary>An hour after the default shipment was created, so default scans (30 minutes after creation) are in the past.</summary>
+    public static FakeTimeProvider NewClock() => new(Start.AddHours(1));
 }
 
 /// <summary>The Week 3 branch repository with three branches: B001 and B002 open, B003 closed.</summary>
@@ -263,7 +261,7 @@ public static class Make
     public static Recipient Recipient(string city = "Sydney") => new("Mia Fictional", "+61 2 5550 1234", "12 Example Lane", city);
 
     public static Shipment Shipment(string trackingNumber = "APX-10000001", DateTimeOffset? createdAt = null, string city = "Sydney") =>
-        ApexPost.Tracking.Domain.Shipment.Create(trackingNumber, "B001", Recipient(city), 2.5m, createdAt ?? TestClock.Start);
+        ApexPost.Tracking.Domain.Shipment.Create(trackingNumber, "B001", Recipient(city), 2.5m, createdAt ?? TestTime.Start);
 
     public static Shipment ShipmentIn(ShipmentStatus status, string trackingNumber = "APX-10000001")
     {
@@ -271,12 +269,12 @@ public static class Make
         var path = new[] { ShipmentStatus.PickedUp, ShipmentStatus.InTransit, ShipmentStatus.OutForDelivery };
         foreach (var step in path.TakeWhile(step => step <= status && status != ShipmentStatus.Created))
         {
-            shipment.MoveTo(step, TestClock.Start);
+            shipment.MoveTo(step, TestTime.Start);
         }
 
         if (status is ShipmentStatus.Delivered or ShipmentStatus.Failed)
         {
-            shipment.MoveTo(status, TestClock.Start);
+            shipment.MoveTo(status, TestTime.Start);
         }
 
         return shipment;
@@ -291,5 +289,5 @@ public static class Make
         ScanType type = ScanType.Pickup,
         DateTimeOffset? at = null,
         string? signature = null) =>
-        new(scanId ?? NewScanId(), type, CourierId, "Sydney depot", at ?? TestClock.Start.AddMinutes(30), "Fictional scan", signature);
+        new(scanId ?? NewScanId(), type, CourierId, "Sydney depot", at ?? TestTime.Start.AddMinutes(30), "Fictional scan", signature);
 }

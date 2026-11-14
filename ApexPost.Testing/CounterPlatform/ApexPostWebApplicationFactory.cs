@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace ApexPost.Testing.CounterPlatform;
 
@@ -14,6 +15,12 @@ namespace ApexPost.Testing.CounterPlatform;
 public class ApexPostWebApplicationFactory : WebApplicationFactory<web::Program>
 {
     public InMemoryDatabase Database { get; } = InMemoryDatabase.FromSeed();
+
+    /// <summary>
+    /// The counter's clock: the middle of a business day, so a sale is never refused or dated by the time the test
+    /// happens to run.
+    /// </summary>
+    public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 11, 10, 3, 0, 0, TimeSpan.Zero));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -28,7 +35,7 @@ public class ApexPostWebApplicationFactory : WebApplicationFactory<web::Program>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Database:SeedOnStartup"] = "false",
-                ["Integration:ApiKey"] = "test-integration-key",
+                ["Integration:ApiKey"] = CounterTestSettings.IntegrationKey,
                 ["Security:AllowedIps:0"] = "127.0.0.1",
                 ["Security:AllowedIps:1"] = "::1",
                 ["Security:AllowedIps:2"] = "127.0.0.25",
@@ -41,6 +48,7 @@ public class ApexPostWebApplicationFactory : WebApplicationFactory<web::Program>
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton(Database);
+            services.AddSingleton<TimeProvider>(Clock);
             services.AddSingleton<IAuditStore, InMemoryAuditStore>();
             services.AddScoped<InMemoryPersistence>();
             services.AddScoped<IUnitOfWork>(Resolve);

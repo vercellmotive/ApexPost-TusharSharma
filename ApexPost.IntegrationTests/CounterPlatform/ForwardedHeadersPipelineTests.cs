@@ -10,8 +10,9 @@ namespace ApexPost.IntegrationTests.CounterPlatform;
 public sealed class ForwardedHeadersPipelineTests
 {
     [Fact]
-    public async Task TrustedForwardedHttpsIsAppliedBeforeHstsAndRedirectMiddleware()
+    public async Task Pipeline_TrustedForwardedHttps_IsAppliedBeforeHstsAndRedirect()
     {
+        // Arrange
         using var factory = new ProductionApexPostFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -21,8 +22,10 @@ public sealed class ForwardedHeadersPipelineTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
         request.Headers.Add("X-Forwarded-Proto", "https");
 
+        // Act
         using var response = await client.SendAsync(request);
 
+        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.Contains("Strict-Transport-Security"));
         Assert.False(response.Headers.Contains("Location"));

@@ -1,28 +1,21 @@
-using System.Diagnostics;
 using ApexPost.Application.Interfaces;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 using ApexPost.Domain.ValueObjects;
 using ApexPost.Infrastructure.Services;
 using Microsoft.Extensions.Caching.Memory;
-using Xunit.Abstractions;
 using ApexPost.Testing.CounterPlatform;
 
 namespace ApexPost.UnitTests.CounterPlatform;
 
 public sealed class ProductCatalogueCacheTests
 {
-    private const int RequestCount = 10_000;
-    private readonly ITestOutputHelper _output;
-
-    public ProductCatalogueCacheTests(ITestOutputHelper output)
-    {
-        _output = output;
-    }
+    private const int RequestCount = 1_000;
 
     [Fact]
-    public async Task CatalogueCacheAvoidsRepeatedRepositoryLoads()
+    public async Task GetProductsAsync_RepeatedCalls_LoadsRepositoryOnce()
     {
+        // Arrange
         var products = Enumerable.Range(1, 30)
             .Select(index => new Product
             {
@@ -37,38 +30,18 @@ public sealed class ProductCatalogueCacheTests
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var catalogue = new ProductCatalogueService(repository, cache);
 
-        var cachedTimer = Stopwatch.StartNew();
+        // Act
+        var results = new List<IReadOnlyList<Product>>();
         for (var index = 0; index < RequestCount; index++)
         {
-            var result = await catalogue.GetProductsAsync();
-            Assert.Equal(products.Count, result.Count);
+            results.Add(await catalogue.GetProductsAsync());
         }
 
-        cachedTimer.Stop();
-        var cachedLoads = repository.LoadCount;
-
-        var uncachedTimer = Stopwatch.StartNew();
-        for (var index = 0; index < RequestCount; index++)
-        {
-            var result = await repository.GetAllAsync();
-            Assert.Equal(products.Count, result.Count);
-        }
-
-        uncachedTimer.Stop();
-        var uncachedLoads = repository.LoadCount - cachedLoads;
-
-        Assert.Equal(1, cachedLoads);
-        Assert.Equal(RequestCount, uncachedLoads);
-        _output.WriteLine(
-            "Catalogue measurement: requests={0}, productCount={1}, cachedBackingLoads={2}, " +
-            "uncachedBackingLoads={3}, cachedElapsedMs={4:F2}, uncachedElapsedMs={5:F2}. " +
-            "Elapsed values are diagnostic; backing-load counts are the deterministic assertion.",
-            RequestCount,
-            products.Count,
-            cachedLoads,
-            uncachedLoads,
-            cachedTimer.Elapsed.TotalMilliseconds,
-            uncachedTimer.Elapsed.TotalMilliseconds);
+        // Assert
+        // The cache is judged by how many times it reached the repository, not by elapsed time, which would change
+        // from one machine and one run to the next.
+        Assert.All(results, result => Assert.Equal(products.Count, result.Count));
+        Assert.Equal(1, repository.LoadCount);
     }
 
     private sealed class CountingProductRepository(IReadOnlyList<Product> products) : IProductRepository

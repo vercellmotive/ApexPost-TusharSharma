@@ -8,8 +8,10 @@ public class ShipmentScanTests
     [Fact]
     public void NewId_IsScanPrefixThenACanonicalLowerCaseGuid()
     {
+        // Act
         var id = ShipmentScan.NewId();
 
+        // Assert
         Assert.StartsWith("scan::", id, StringComparison.Ordinal);
         Assert.True(Guid.TryParseExact(id["scan::".Length..], "D", out _));
         Assert.Equal(id, id.ToLowerInvariant());
@@ -25,15 +27,25 @@ public class ShipmentScanTests
     [InlineData("scan:3f2504e0-4f89-11d3-9a0c-0305e82c3301", false)]
     [InlineData("", false)]
     [InlineData(null, false)]
-    public void IsValidId_AcceptsOnlyTheScanGuidFormat(string? id, bool expected) =>
-        Assert.Equal(expected, ShipmentScan.IsValidId(id));
+    public void IsValidId_AcceptsOnlyTheScanGuidFormat(string? id, bool expected)
+    {
+        // Act
+        var valid = ShipmentScan.IsValidId(id);
+
+        // Assert
+        Assert.Equal(expected, valid);
+    }
 
     [Fact]
     public void CreatePending_StartsPending_WithAFreshId()
     {
+        // Arrange
         var first = Scans.Make();
+
+        // Act
         var second = Scans.Make();
 
+        // Assert
         Assert.Equal(SyncStatus.Pending, first.SyncStatus);
         Assert.NotEqual(first.Id, second.Id);
         Assert.True(ShipmentScan.IsValidId(first.Id));
@@ -42,10 +54,13 @@ public class ShipmentScanTests
     [Fact]
     public void CreatePending_ConvertsTheTimeToUtc_KeepingTheInstant()
     {
+        // Arrange
         var sydney = new DateTimeOffset(2026, 11, 2, 22, 30, 0, TimeSpan.FromHours(11));
 
+        // Act
         var scan = Scans.Make(at: sydney);
 
+        // Assert
         Assert.Equal(TimeSpan.Zero, scan.ScannedAtUtc.Offset);
         Assert.Equal(sydney.UtcDateTime, scan.ScannedAtUtc.UtcDateTime);
     }
@@ -53,8 +68,10 @@ public class ShipmentScanTests
     [Fact]
     public void CreatePending_TrimsText_AndTurnsBlankNotesIntoNull()
     {
+        // Act
         var scan = ShipmentScan.CreatePending("  APX-1  ", ScanType.Delivered, " C-7 ", "  Perth WA ", Scans.Noon, "   ");
 
+        // Assert
         Assert.Equal("APX-1", scan.TrackingNumber);
         Assert.Equal("C-7", scan.CourierId);
         Assert.Equal("Perth WA", scan.Location);
@@ -68,12 +85,19 @@ public class ShipmentScanTests
     [InlineData("APX-001", "C 1", "Sydney")]
     [InlineData("APX-001", "C-1", "")]
     [InlineData("APX-001", "C-1", "Syd\tney")]
-    public void CreatePending_RejectsBadTrackingNumberCourierOrLocation(string tracking, string courier, string location) =>
-        Assert.Throws<ArgumentException>(() => ShipmentScan.CreatePending(tracking, ScanType.Pickup, courier, location, Scans.Noon));
+    public void CreatePending_RejectsBadTrackingNumberCourierOrLocation(string tracking, string courier, string location)
+    {
+        // Act
+        Action act = () => ShipmentScan.CreatePending(tracking, ScanType.Pickup, courier, location, Scans.Noon);
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
 
     [Fact]
     public void CreatePending_RejectsTextThatIsTooLong()
     {
+        // Act and assert
         Assert.Throws<ArgumentException>(() => Scans.Make(trackingNumber: new string('A', ShipmentScan.MaxTrackingNumberLength + 1)));
         Assert.Throws<ArgumentException>(() => Scans.Make(courierId: new string('C', ShipmentScan.MaxCourierIdLength + 1)));
         Assert.Throws<ArgumentException>(() => Scans.Make(location: new string('L', ShipmentScan.MaxLocationLength + 1)));
@@ -81,10 +105,12 @@ public class ShipmentScanTests
     }
 
     [Fact]
-    public void Validate_RejectsANonUtcTime_AnUnknownEnum_AndABadId()
+    public void Validate_NonUtcTimeUnknownEnumOrBadId_Throws()
     {
+        // Arrange
         var good = Scans.Make();
 
+        // Act and assert
         Assert.Throws<ArgumentException>(() => (good with { ScannedAtUtc = new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.FromHours(10)) }).Validate());
         Assert.Throws<ArgumentException>(() => (good with { ScanType = (ScanType)99 }).Validate());
         Assert.Throws<ArgumentException>(() => (good with { SyncStatus = (SyncStatus)99 }).Validate());
@@ -93,8 +119,9 @@ public class ShipmentScanTests
     }
 
     [Fact]
-    public void TheEnumsUseTheNamesFromTheBrief()
+    public void Enums_Names_MatchTheBrief()
     {
+        // Act and assert
         Assert.Equal(["Pickup", "InTransit", "Delivered", "Failed"], Enum.GetNames<ScanType>());
         Assert.Equal(["Pending", "Synced", "Failed"], Enum.GetNames<SyncStatus>());
     }

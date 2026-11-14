@@ -11,18 +11,21 @@ namespace ApexPost.UnitTests.CounterPlatform;
 public sealed class StaffManagementServiceTests
 {
     [Fact]
-    public async Task CreateNormalizesValuesAndAssignsNextStaffId()
+    public async Task Create_ValidStaff_NormalisesValuesAndAssignsNextId()
     {
+        // Arrange
         var existing = CreateStaff("STF009", "existing@example.test");
         var staff = CreateDatabase([existing]);
         var service = CreateService(staff);
 
+        // Act
         var created = await service.CreateAsync(new StaffRecordInput(
             "  New Clerk ",
             " new@example.test ",
             StaffRole.CounterClerk,
             " B001 "));
 
+        // Assert
         Assert.Equal("STF010", created.Id);
         Assert.Equal("New Clerk", created.Name);
         Assert.Equal("new@example.test", created.Email);
@@ -30,11 +33,13 @@ public sealed class StaffManagementServiceTests
     }
 
     [Fact]
-    public async Task CreateRejectsDuplicateEmailIgnoringCase()
+    public async Task Create_DuplicateEmailInOtherCase_IsRejected()
     {
+        // Arrange
         var service = CreateService(CreateDatabase(
             [CreateStaff("STF001", "clerk@example.test")]));
 
+        // Act and assert
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.CreateAsync(new StaffRecordInput(
                 "Another Clerk",
@@ -44,43 +49,55 @@ public sealed class StaffManagementServiceTests
     }
 
     [Fact]
-    public async Task CreateCommitsOnceAndAssignsADistinctId()
+    public async Task Create_TwoStaff_CommitsOnceEachWithDistinctIds()
     {
+        // Arrange
         var staff = CreateDatabase([CreateStaff("STF001", "existing@example.test")]);
         var persistence = new InMemoryPersistence(staff);
         var service = new StaffManagementService(persistence, persistence, persistence, new FakePasswordHasher());
 
+        // Act
         var created = await service.CreateAsync(new StaffRecordInput("New Clerk", "new@example.test", StaffRole.CounterClerk, "B001"));
 
+        // Assert
         Assert.Equal(1, persistence.CommitCount);
         Assert.Equal(2, staff.AllStaff().Select(person => person.Id).Distinct().Count());
         Assert.Equal(created.Id, staff.StaffById(created.Id).Id);
     }
 
     [Fact]
-    public async Task UpdatePreservesInactiveStatusAndDeactivateRejectsUnknownStaff()
+    public async Task UpdateAndDeactivate_InactiveOrUnknownStaff_PreservesStatusAndRejectsUnknown()
     {
+        // Arrange
         var existing = CreateStaff("STF001", "old@example.test");
         existing.Deactivate();
         var staff = CreateDatabase([existing]);
         var service = CreateService(staff);
 
+        // Act
         var updated = await service.UpdateAsync(
             "STF001",
             new StaffRecordInput("Updated Clerk", "updated@example.test", StaffRole.Auditor, "B001"));
 
+        // Assert
         Assert.False(updated.IsActive);
         Assert.Equal("Updated Clerk", updated.Name);
         Assert.Equal(StaffRole.Auditor, updated.Role);
+
+        // Act
         await service.DeactivateAsync("STF001");
+
+        // Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.DeactivateAsync("STF404"));
     }
 
     [Fact]
-    public async Task CreateRejectsUnknownBranchAndUndefinedRole()
+    public async Task Create_UnknownBranchOrUndefinedRole_IsRejected()
     {
+        // Arrange
         var service = CreateService(CreateDatabase());
 
+        // Act and assert
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.CreateAsync(new StaffRecordInput(
                 "Clerk",

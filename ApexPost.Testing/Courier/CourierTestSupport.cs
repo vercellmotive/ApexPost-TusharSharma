@@ -5,7 +5,6 @@ using ApexPost.Courier.Core.Api;
 using ApexPost.Courier.Core.Auth;
 using ApexPost.Courier.Core.Resilience;
 using ApexPost.Courier.Core.Sync;
-using ApexPost.Courier.Core.ViewModels;
 using ApexPost.Courier.Offline.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -97,28 +96,6 @@ public sealed class FakeConnectivity(bool online = true) : IConnectivityMonitor
     {
         IsOnline = online;
         ConnectivityChanged?.Invoke(this, online);
-    }
-}
-
-public sealed class InlineDispatcher : IUiDispatcher
-{
-    public void Post(Action action) => action();
-}
-
-public sealed class RecordingNavigator : INavigator
-{
-    public List<string> Visits { get; } = [];
-
-    public Task ShowLoginAsync()
-    {
-        Visits.Add("login");
-        return Task.CompletedTask;
-    }
-
-    public Task ShowMainAsync()
-    {
-        Visits.Add("main");
-        return Task.CompletedTask;
     }
 }
 

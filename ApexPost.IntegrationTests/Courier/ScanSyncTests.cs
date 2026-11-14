@@ -26,7 +26,7 @@ public sealed class ScanSyncTests : IDisposable
     }
 
     private ShipmentScan Save(string tracking = "APX-10000001", int minutesAgo = 10, ScanType type = ScanType.Pickup) =>
-        _store.Repository.Create(ShipmentScan.CreatePending(tracking, type, "CR-1001", "Depot", DateTimeOffset.UtcNow.AddMinutes(-minutesAgo)));
+        _store.Repository.Create(ShipmentScan.CreatePending(tracking, type, "CR-1001", "Depot", Scans.ScannedAt.AddMinutes(-minutesAgo)));
 
     // The fake server accepts everything except the scan ids in rejectIds.
     private void AcceptAll(params string[] rejectIds) => _harness.Server.Fallback = async request =>
@@ -38,8 +38,9 @@ public sealed class ScanSyncTests : IDisposable
     };
 
     [Fact]
-    public async Task Pending_scans_go_up_in_batches_of_20_split_by_shipment_and_become_synced()
+    public async Task SyncNow_ManyPendingScans_UploadsBatchesOf20PerShipment()
     {
+        // Arrange
         for (var index = 0; index < 45; index++)
         {
             Save(index % 3 == 0 ? "APX-10000002" : "APX-10000001", minutesAgo: 100 - index);
@@ -47,58 +48,73 @@ public sealed class ScanSyncTests : IDisposable
 
         AcceptAll();
 
+        // Act
         var report = await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(45, report.Synced);
         Assert.Empty(_store.Repository.FindPending());
 
+        // Act
         // The change listener updates the live count on its own thread.
         await Wait.UntilAsync(() => _store.Database.PendingCount == 0);
+
+        // Assert
         var sizes = _harness.Server.Received.Select(request => JsonDocument.Parse(request.Body!).RootElement.GetProperty("scans").GetArrayLength()).ToList();
+
         Assert.All(sizes, size => Assert.InRange(size, 1, ScanSyncService.BatchSize));
         Assert.Equal(6, sizes.Count);
         Assert.Equal(45, sizes.Sum());
     }
 
     [Fact]
-    public async Task Rejected_scans_become_failed_with_the_reason_and_the_rest_synced()
+    public async Task SyncNow_SomeScansRejected_MarksThemFailedAndRestSynced()
     {
+        // Arrange
         var good = Save();
         var bad = Save();
         AcceptAll(bad.Id);
 
+        // Act
         var report = await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(good.Id)!.SyncStatus);
         Assert.Equal(SyncStatus.Failed, _store.Repository.Get(bad.Id)!.SyncStatus);
         Assert.Contains("before the shipment was created", Assert.Single(report.Failures).Reason);
     }
 
     [Fact]
-    public async Task A_refused_shipment_marks_its_scans_failed_but_other_shipments_still_sync()
+    public async Task SyncNow_OneShipmentRefused_OtherShipmentsStillSync()
     {
+        // Arrange
         var unknown = Save("APX-99999999", minutesAgo: 20);
         var known = Save("APX-10000001", minutesAgo: 10);
         _harness.Server
             .Then(HttpStatusCode.NotFound, """{"title":"Shipment not found","status":404,"detail":"No shipment has tracking number APX-99999999."}""", "application/problem+json")
             .Then(HttpStatusCode.OK, """{"accepted":1,"duplicatesSkipped":0,"rejected":0,"rejections":[]}""");
 
+        // Act
         var report = await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(SyncStatus.Failed, _store.Repository.Get(unknown.Id)!.SyncStatus);
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(known.Id)!.SyncStatus);
         Assert.Equal("No shipment has tracking number APX-99999999.", Assert.Single(report.Failures).Reason);
     }
 
     [Fact]
-    public async Task When_the_server_is_down_the_scans_stay_pending_and_the_run_stops()
+    public async Task SyncNow_ServerDown_LeavesScansPendingAndStops()
     {
+        // Arrange
         Save("APX-10000001", minutesAgo: 20);
         Save("APX-10000002", minutesAgo: 10);
         _harness.Server.Fallback = _ => Task.FromResult(ScriptedServer.Respond(HttpStatusCode.ServiceUnavailable, null));
 
+        // Act
         var report = await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(2, report.LeftPending);
         Assert.NotNull(report.StopReason);
         Assert.Equal(2, _store.Repository.FindPending().Count);
@@ -106,40 +122,57 @@ public sealed class ScanSyncTests : IDisposable
     }
 
     [Fact]
-    public async Task Offline_nothing_is_sent_and_reconnecting_starts_the_upload()
+    public async Task ConnectivityChanged_OfflineThenOnline_UploadsOnReconnect()
     {
+        // Arrange
         _connectivity.Set(false);
         Save();
         Save();
         AcceptAll();
 
+        // Act
         var offline = await _sync.SyncPendingAsync();
+
+        // Assert
         Assert.Equal(0, _harness.Server.Calls);
         Assert.Contains("offline", offline.StopReason);
+
+        // Arrange (next step)
         await Wait.UntilAsync(() => _store.Database.PendingCount == 2);
 
         _connectivity.Set(true);
+
+        // Act
         await _sync.BackgroundRun!;
 
+        // Assert
         Assert.Empty(_store.Repository.FindPending());
+
+        // Act
         await Wait.UntilAsync(() => _store.Database.PendingCount == 0);
+
+        // Assert
         Assert.Equal(2, _sync.LastReport!.Synced);
     }
 
     [Fact]
-    public async Task A_duplicate_the_server_already_has_counts_as_synced()
+    public async Task SyncNow_ServerAlreadyHasScan_CountsAsSynced()
     {
+        // Arrange
         var scan = Save();
         _harness.Server.Then(HttpStatusCode.OK, """{"accepted":0,"duplicatesSkipped":1,"rejected":0,"rejections":[]}""");
 
+        // Act
         await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(scan.Id)!.SyncStatus);
     }
 
     [Fact]
-    public async Task Only_one_run_at_a_time()
+    public async Task SyncNow_CalledTwiceAtOnce_RunsOnce()
     {
+        // Arrange
         Save();
         var release = new TaskCompletionSource();
         _harness.Server.Then(async _ =>
@@ -153,6 +186,7 @@ public sealed class ScanSyncTests : IDisposable
         var second = await _sync.SyncPendingAsync();
         release.SetResult();
 
+        // Act and assert
         Assert.Equal("A sync is already running.", second.StopReason);
         Assert.Equal(1, (await first).Synced);
     }
@@ -160,13 +194,16 @@ public sealed class ScanSyncTests : IDisposable
     [Theory]
     [InlineData("<html><body>Please sign in to the Wi-Fi</body></html>")]
     [InlineData("{\"accepted\":")]
-    public async Task A_captive_portal_page_leaves_the_scans_pending_instead_of_failing_them(string body)
+    public async Task SyncNow_CaptivePortalHtml_LeavesScansPending(string body)
     {
+        // Arrange
         var scan = Save();
         _harness.Server.Fallback = _ => Task.FromResult(ScriptedServer.Respond(HttpStatusCode.OK, body, "text/html"));
 
+        // Act
         var report = await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(SyncStatus.Pending, _store.Repository.Get(scan.Id)!.SyncStatus);
         Assert.Equal(0, report.Failed);
         Assert.Equal(1, report.LeftPending);
@@ -174,8 +211,9 @@ public sealed class ScanSyncTests : IDisposable
     }
 
     [Fact]
-    public async Task A_scan_edited_while_it_uploads_stays_pending_so_the_edit_is_sent_too()
+    public async Task SyncNow_ScanEditedDuringUpload_StaysPending()
     {
+        // Arrange
         var scan = Save();
         var untouched = Save(minutesAgo: 5);
         _harness.Server.Then(async request =>
@@ -184,8 +222,10 @@ public sealed class ScanSyncTests : IDisposable
             return ScriptedServer.Respond(HttpStatusCode.OK, """{"accepted":2,"duplicatesSkipped":0,"rejected":0,"rejections":[]}""");
         });
 
+        // Act
         var report = await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(SyncStatus.Pending, _store.Repository.Get(scan.Id)!.SyncStatus);
         Assert.Equal("Corrected location", _store.Repository.Get(scan.Id)!.Location);
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(untouched.Id)!.SyncStatus);
@@ -193,8 +233,9 @@ public sealed class ScanSyncTests : IDisposable
     }
 
     [Fact]
-    public async Task A_scan_deleted_while_it_uploads_does_not_come_back()
+    public async Task SyncNow_ScanDeletedDuringUpload_DoesNotComeBack()
     {
+        // Arrange
         var scan = Save();
         _harness.Server.Then(async request =>
         {
@@ -202,52 +243,69 @@ public sealed class ScanSyncTests : IDisposable
             return ScriptedServer.Respond(HttpStatusCode.OK, """{"accepted":1,"duplicatesSkipped":0,"rejected":0,"rejections":[]}""");
         });
 
+        // Act
         await _sync.SyncPendingAsync();
 
+        // Assert
         Assert.Null(_store.Repository.Get(scan.Id));
     }
 
     [Fact]
-    public async Task Failed_scans_can_be_sent_again_once_the_cause_is_fixed()
+    public async Task RetryFailed_AfterCauseFixed_SendsFailedScansAgain()
     {
+        // Arrange
         var scan = Save("APX-10000009");
         _harness.Server.Then(HttpStatusCode.NotFound, """{"status":404,"detail":"No shipment has tracking number APX-10000009."}""");
+
+        // Act
         await _sync.SyncPendingAsync();
+
+        // Assert
         Assert.Equal(SyncStatus.Failed, _store.Repository.Get(scan.Id)!.SyncStatus);
         Assert.Empty(_store.Repository.FindPending());
 
+        // Arrange (next step)
         // A back-office user has created the shipment since.
         _harness.Server.Then(HttpStatusCode.OK, """{"accepted":1,"duplicatesSkipped":0,"rejected":0,"rejections":[]}""");
+
+        // Act
         var report = await _sync.RetryFailedAsync();
 
+        // Assert
         Assert.Equal(1, report.Synced);
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(scan.Id)!.SyncStatus);
     }
 
     [Fact]
-    public async Task The_part_a_outbox_leaves_scans_pending_when_the_real_uploader_cannot_reach_the_server()
+    public async Task PartAOutbox_RealUploaderUnreachable_LeavesScansPending()
     {
+        // Arrange
         var first = Save(minutesAgo: 10);
         var second = Save(minutesAgo: 5);
         _harness.Server.Fallback = _ => Task.FromResult(ScriptedServer.Respond(HttpStatusCode.ServiceUnavailable, null));
         var outbox = new OutboxService(_store.Repository, new ApiShipmentUploader(_harness.Client));
 
+        // Act
         var result = await outbox.SyncPendingAsync();
 
+        // Assert
         Assert.Equal((0, 0, 2), (result.Synced, result.Failed, result.Deferred));
         Assert.Equal(SyncStatus.Pending, _store.Repository.Get(first.Id)!.SyncStatus);
         Assert.Equal(SyncStatus.Pending, _store.Repository.Get(second.Id)!.SyncStatus);
     }
 
     [Fact]
-    public async Task The_part_a_outbox_works_with_the_real_uploader_instead_of_the_fake()
+    public async Task PartAOutbox_RealUploader_SyncsScans()
     {
+        // Arrange
         var scan = Save();
         AcceptAll();
         var outbox = new OutboxService(_store.Repository, new ApiShipmentUploader(_harness.Client));
 
+        // Act
         var result = await outbox.SyncPendingAsync();
 
+        // Assert
         Assert.Equal(1, result.Synced);
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(scan.Id)!.SyncStatus);
     }

@@ -11,11 +11,14 @@ public class DocumentModelTests
     [Fact]
     public void ASavedScan_IsAJsonDocumentWithExactlyTheSevenFields()
     {
+        // Arrange
         using var db = new TestCourierDatabase();
         var scan = db.Repository.Create(Scans.Make("APX-9", ScanType.InTransit, "C-5", notes: "left with neighbour"));
 
+        // Act
         using var document = db.Database.DefaultCollection.GetDocument(scan.Id);
 
+        // Assert
         Assert.NotNull(document);
         Assert.Equal(
             ["courierId", "location", "notes", "scanType", "scannedAtUtc", "syncStatus", "trackingNumber"],
@@ -31,11 +34,14 @@ public class DocumentModelTests
     [Fact]
     public void ADeliveredScanWithASignature_AddsOnlyTheOptionalSignatureField()
     {
+        // Arrange
         using var db = new TestCourierDatabase();
-        var created = db.Repository.Create(ShipmentScan.CreatePending("APX-9", ScanType.Delivered, "C-5", "Front door", DateTimeOffset.UtcNow, recipientSignatureName: "Mia Fictional"));
+        var created = db.Repository.Create(ShipmentScan.CreatePending("APX-9", ScanType.Delivered, "C-5", "Front door", Scans.Noon, recipientSignatureName: "Mia Fictional"));
 
+        // Act
         using var document = db.Database.DefaultCollection.GetDocument(created.Id);
 
+        // Assert
         Assert.Equal(8, document!.Keys.Count);
         Assert.Equal("Mia Fictional", document.GetString("recipientSignatureName"));
         Assert.Equal("Mia Fictional", db.Repository.Get(created.Id)!.RecipientSignatureName);
@@ -45,11 +51,14 @@ public class DocumentModelTests
     [Fact]
     public void TheTimeIsStoredAsUtcText_SoOrderingByTextIsOrderingByTime()
     {
+        // Arrange
         using var db = new TestCourierDatabase();
         var scan = db.Repository.Create(Scans.Make(at: new DateTimeOffset(2026, 11, 2, 23, 15, 7, 123, TimeSpan.FromHours(10))));
 
+        // Act
         using var document = db.Database.DefaultCollection.GetDocument(scan.Id);
 
+        // Assert
         var stored = Assert.IsType<string>(document!.GetValue("scannedAtUtc"));
         Assert.True(DateTimeOffset.TryParse(stored, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed));
         Assert.Equal(TimeSpan.Zero, parsed.Offset);
@@ -60,11 +69,14 @@ public class DocumentModelTests
     [Fact]
     public void ADocumentId_IsScanColonColonAGuid()
     {
+        // Arrange
         using var db = new TestCourierDatabase();
         var scan = db.Repository.Create(Scans.Make());
 
+        // Act
         using var document = db.Database.DefaultCollection.GetDocument(scan.Id);
 
+        // Assert
         Assert.Equal(scan.Id, document!.Id);
         Assert.Matches("^scan::[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", document.Id);
     }
@@ -72,11 +84,14 @@ public class DocumentModelTests
     [Fact]
     public void MissingNotes_AreStoredAsNull_AndComeBackAsNull()
     {
+        // Arrange
         using var db = new TestCourierDatabase();
         var scan = db.Repository.Create(Scans.Make(notes: null));
 
+        // Act
         using var document = db.Database.DefaultCollection.GetDocument(scan.Id);
 
+        // Assert
         Assert.Null(document!.GetString("notes"));
         Assert.Null(db.Repository.Get(scan.Id)!.Notes);
     }
@@ -84,21 +99,26 @@ public class DocumentModelTests
     [Fact]
     public void ADocumentThatIsNotAShipmentScan_IsReportedNotGuessedAt()
     {
+        // Arrange
         using var db = new TestCourierDatabase();
         var broken = new Couchbase.Lite.MutableDocument("scan::3f2504e0-4f89-11d3-9a0c-0305e82c3301");
         broken.SetString("trackingNumber", "APX-1");
         broken.SetString("scanType", "Teleported");
         db.Database.DefaultCollection.Save(broken);
 
+        // Act and assert
         Assert.Throws<InvalidDataException>(() => db.Repository.Get("scan::3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
     }
 
     [Fact]
     public void DomainTypes_ReferenceNoCouchbaseTypes()
     {
+        // Act
         var domainTypes = typeof(ShipmentScan).Assembly.GetTypes()
             .Where(type => type.Namespace == "ApexPost.Courier.Offline.Domain")
             .ToList();
+
+        // Assert
         Assert.NotEmpty(domainTypes);
 
         foreach (var type in domainTypes)
@@ -116,9 +136,13 @@ public class DocumentModelTests
     [Fact]
     public void DomainSourceFiles_NeverMentionCouchbase()
     {
+        // Arrange
         var folder = Path.Combine(FindRepositoryRoot(), "ApexPost.Courier.Offline", "Domain");
+
+        // Act
         var files = Directory.GetFiles(folder, "*.cs");
 
+        // Assert
         Assert.NotEmpty(files);
         foreach (var file in files)
         {
@@ -129,8 +153,10 @@ public class DocumentModelTests
     [Fact]
     public void TheLibrary_UsesNoNetworkApis_SoItWorksWithoutAConnection()
     {
+        // Act
         var referenced = typeof(CourierDatabase).Assembly.GetReferencedAssemblies().Select(name => name.Name ?? string.Empty).ToList();
 
+        // Assert
         Assert.DoesNotContain(referenced, name => name.StartsWith("System.Net", StringComparison.Ordinal));
     }
 
