@@ -1,0 +1,11 @@
+[xUnit.net 00:00:00.19]     ApexPost.UnitTests.Tracking.TrackingNumberTests.IsValid_MalformedNumber_ReturnsFalse(trackingNumber: "APX-12345678\n") [FAIL]
+   Assert.False() Failure
+Expected: False
+Actual:   True
+     at ApexPost.UnitTests.Tracking.TrackingNumberTests.IsValid_MalformedNumber_ReturnsFalse(String trackingNumber) in /private/tmp/claude-501/-Users-tushar-Documents-DotNet-Training-Assignment-ApexPost/6c2608fe-815d-4ff6-a593-806c6347320d/scratchpad/wk/ApexPost.UnitTests/Tracking/TrackingNumberTests.cs:line 39
+[xUnit.net 00:00:00.20]     ApexPost.UnitTests.Api.RequestValidationTests.CreateShipmentRequest_PhoneNumber_Needs8To15DigitsInAPlainLayout(phone: "0255501234\n", expectedValid: False) [FAIL]
+   Assert.Equal() Failure: Values differ
+Expected: False
+Actual:   True
+     at ApexPost.UnitTests.Api.RequestValidationTests.CreateShipmentRequest_PhoneNumber_Needs8To15DigitsInAPlainLayout(String phone, Boolean expectedValid) in /private/tmp/claude-501/-Users-tushar-Documents-DotNet-Training-Assignment-ApexPost/6c2608fe-815d-4ff6-a593-806c6347320d/scratchpad/wk/ApexPost.UnitTests/Api/RequestValidationTests.cs:line 150
+Failed!  - Failed:     2, Passed:    49, Skipped:     0, Total:    51, Duration: 57 ms - ApexPost.UnitTests.dll (net10.0)
