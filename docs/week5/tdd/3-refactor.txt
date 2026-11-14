@@ -1,0 +1,2 @@
+Passed!  - Failed:     0, Passed:   298, Skipped:     0, Total:   298, Duration: 891 ms - ApexPost.UnitTests.dll (net10.0)
+Passed!  - Failed:     0, Passed:   315, Skipped:    36, Total:   351, Duration: 5 s - ApexPost.IntegrationTests.dll (net10.0)
