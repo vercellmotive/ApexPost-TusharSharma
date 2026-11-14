@@ -8,6 +8,9 @@
     <PackageReference Include="Couchbase.Lite" Version="4.1.2" />
   </ItemGroup>
   <ItemGroup>
-    <InternalsVisibleTo Include="ApexPost.Courier.Offline.Tests" />
+    <InternalsVisibleTo Include="ApexPost.UnitTests" />
+    <InternalsVisibleTo Include="ApexPost.IntegrationTests" />
+    <InternalsVisibleTo Include="ApexPost.Specs" />
+    <InternalsVisibleTo Include="ApexPost.Testing" />
   </ItemGroup>
 </Project>

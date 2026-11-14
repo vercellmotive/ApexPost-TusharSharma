@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Test doubles and factories shared by the unit, integration and acceptance test projects, so each one is written
+    once. It holds no tests itself.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
+    <PackageReference Include="xunit.assert" Version="2.9.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Both web apps declare a top-level Program, so each is also reachable through an alias (web::Program, api::Program). -->
+    <ProjectReference Include="..\ApexPost.Web\ApexPost.Web.csproj" Aliases="global,web" />
+    <ProjectReference Include="..\ApexPost.Api\ApexPost.Api.csproj" Aliases="global,api" />
+    <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
+    <ProjectReference Include="..\ApexPost.Tracking.Infrastructure\ApexPost.Tracking.Infrastructure.csproj" />
+    <ProjectReference Include="..\ApexPost.Courier.Core\ApexPost.Courier.Core.csproj" />
+    <ProjectReference Include="..\ApexPost.Courier.Offline\ApexPost.Courier.Offline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

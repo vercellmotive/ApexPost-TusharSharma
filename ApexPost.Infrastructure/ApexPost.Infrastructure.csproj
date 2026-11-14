@@ -39,7 +39,10 @@
     </None>
   </ItemGroup>
     <ItemGroup>
-    <InternalsVisibleTo Include="ApexPost.Test" />
+    <InternalsVisibleTo Include="ApexPost.UnitTests" />
+    <InternalsVisibleTo Include="ApexPost.IntegrationTests" />
+    <InternalsVisibleTo Include="ApexPost.Specs" />
+    <InternalsVisibleTo Include="ApexPost.Testing" />
     <EmbeddedResource Include="..\sql\procedures\*.sql" LogicalName="ApexPost.Sql.%(Filename).sql" />
     <EmbeddedResource Include="..\sql\procedures\history\*.sql" LogicalName="ApexPost.Sql.%(Filename).sql" />
   </ItemGroup>
