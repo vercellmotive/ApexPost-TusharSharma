@@ -1,0 +1,63 @@
+@api
+Feature: Shipment access control
+  Shipment information and actions are available only to people with the appropriate access.
+
+  Background:
+    Given a shipment is available
+
+  Scenario Outline: Signed-in users can view shipment details
+    Given I am signed in as "<role>"
+    When I request the shipment details
+    Then the API response status is 200
+
+    Examples:
+      | role    |
+      | Admin   |
+      | Courier |
+
+  Scenario: Visitors cannot view shipment details
+    Given I am not signed in
+    When I request the shipment details
+    Then the API response status is 401
+    And the response is Problem Details
+
+  Scenario Outline: Only administrators can remove a shipment
+    Given I am signed in as "<role>"
+    When I remove the shipment
+    Then the API response status is <status>
+    And any access denial is returned as Problem Details
+
+    Examples:
+      | role    | status |
+      | Courier | 403    |
+      | Admin   | 204    |
+
+  Scenario Outline: Only couriers can perform delivery work
+    Given I am signed in as an administrator
+    When I try to "<action>" the shipment
+    Then the API response status is 403
+    And the response is Problem Details
+
+    Examples:
+      | action        |
+      | change status |
+      | upload a scan |
+
+  Scenario: A courier can only upload scans under their own identity
+    Given I am signed in as a courier
+    When I upload a scan for another courier
+    Then the API response status is 403
+    And the response is Problem Details
+    And no scan is stored
+
+  Scenario Outline: Partner access requires the configured credential
+    Given the partner credential is "<credential>"
+    When I request the partner shipment details
+    Then the API response status is <status>
+    And any access denial is returned as Problem Details
+
+    Examples:
+      | credential | status |
+      | missing    | 401    |
+      | incorrect  | 401    |
+      | configured | 200    |

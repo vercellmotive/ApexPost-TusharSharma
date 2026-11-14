@@ -1,0 +1,11 @@
+[xUnit.net 00:00:00.19]     ApexPost.Courier.Offline.Tests.Sync.OutboxServiceTests.SyncPendingAsync_SuccessfulUpload_MarksScanSynced [FAIL]
+[xUnit.net 00:00:00.19]     ApexPost.Courier.Offline.Tests.Sync.OutboxServiceTests.SyncPendingAsync_RejectedUpload_MarksScanFailedWithError [FAIL]
+[xUnit.net 00:00:00.20]     ApexPost.Courier.Offline.Tests.Sync.OutboxServiceTests.SyncPendingAsync_UploaderThrows_MarksScanFailedAndContinuesRun [FAIL]
+  Error Message:
+Expected: string[]     ["scan::521ca464-9421-4b12-8fac-b152085f11e9"]
+Actual:   List<string> []
+  Error Message:
+  Error Message:
+Expected: string[]     ["scan::61bc79e6-49ec-46ae-8949-0e4318c49ddc"]
+Actual:   List<string> []
+Failed!  - Failed:     3, Passed:     3, Skipped:     0, Total:     6, Duration: 80 ms - ApexPost.UnitTests.dll (net10.0)

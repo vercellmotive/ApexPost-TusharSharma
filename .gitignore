@@ -370,3 +370,6 @@ FodyWeavers.xsd
 **/courier-data/
 *.cblite2/
 listener.log
+
+# Reqnroll generates the code-behind of each feature file at build time.
+*.feature.cs

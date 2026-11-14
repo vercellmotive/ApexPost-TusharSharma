@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using ApexPost.Api.Security;
 using ApexPost.Domain.ValueObjects;
 using ApexPost.Specs.Support;
 using ApexPost.Testing.Tracking;
@@ -16,9 +15,6 @@ namespace ApexPost.Specs.StepDefinitions;
 public sealed class ShipmentCreationSteps(ApiScenarioContext context)
 {
     private const string Shipments = "/api/v2/shipments";
-
-    [Given("I am signed in as an administrator")]
-    public void GivenIAmSignedInAsAnAdministrator() => context.Client = context.Api.CreateClient(ApexPostRoles.Admin);
 
     [Given("the parcel is handed in at branch {string}, which is open")]
     public async Task GivenTheParcelIsHandedInAtAnOpenBranch(string branchCode)
