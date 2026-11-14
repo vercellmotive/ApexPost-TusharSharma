@@ -122,6 +122,28 @@ The four parts are chained: each branch starts from the one before it, so merge 
 | `5860fe3` | 2026-11-09 | feat(courier): add the .NET MAUI app with Login, New Scan, Pending and Sync Status |
 | `7dfc3f6` | 2026-11-09 | docs: add SECURITY.md, RESILIENCE.md, the Part D README section and evidence |
 
+## Week 5: testing (`week5-testing`)
+
+One branch, merged into `master` with a merge commit (not squashed), so the `RED:`, `GREEN:` and `REFACTOR:` commits of the TDD cycle stay visible in `master`. The strategy was committed first, before any test changed. Every commit builds, and every commit's tests pass, except the `RED:` commit, which fails on purpose (TDD-LOG.md).
+
+| Commit | Date | Message |
+|---|---|---|
+| `df1d417` | 2026-11-14 | docs: write the Week 5 testing strategy before changing any test |
+| `076dc00` | 2026-11-14 | test: reorganise the suites into unit, integration and shared test-support projects |
+| `2c363a6` | 2026-11-14 | test: apply the naming, AAA and determinism rules to every kept test |
+| `dd2d896` | 2026-11-14 | test: add boundary, exception and Moq unit tests for the shipment rules |
+| `3f34acd` | 2026-11-14 | fix: refuse tracking and phone numbers that end in a line break |
+| `04fbf67` | 2026-11-14 | test: test the typed API client against fake and mocked HTTP handlers |
+| `ce548c7` | 2026-11-14 | test: run the EF Core shipment store against SQLite in memory |
+| `5aa7626` | 2026-11-15 | test: exercise the shipment API end to end against a SQLite test database |
+| `2d72146` | 2026-11-15 | RED: a scan recorded after its shipment was closed must be rejected |
+| `24cbdb7` | 2026-11-15 | GREEN: reject a scan recorded after its shipment was closed |
+| `b9aa7ba` | 2026-11-15 | REFACTOR: move the closed-shipment rule into the Shipment domain object |
+| `ccd7880` | 2026-11-15 | docs: write the TDD log and test the extracted domain members |
+| `34eb19f` | 2026-11-15 | test: add Reqnroll acceptance scenarios for shipment creation and scan sync |
+| `3754163` | 2026-11-15 | test: add Copilot-drafted outbox unit tests and access-control feature, reviewed |
+| (this file) | 2026-11-15 | docs: Week 5 results, coverage, README testing section and reflection |
+
 ## Early commit messages
 
 The first commits have weak messages, such as `3065b8e` ("Final submittion commit."), which holds 84 files. They stay as they are: rewriting them would change every later commit hash on `master`, and break the links from the pull requests above. Work since then uses a feature branch, a pull request and a message that says what changed.

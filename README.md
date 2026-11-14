@@ -62,15 +62,65 @@ dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --sta
 
 ### Tests
 
+Every test runs from Visual Studio Test Explorer or from the command line, with nothing to install or configure beyond the .NET 10 SDK. SQLite runs in memory, Couchbase Lite in a temporary folder, and the API and web app in process:
+
 ```bash
 dotnet test ApexPost.slnx
 ```
 
-This runs the Week 3 project `ApexPost.Test` (181 tests with no database, and 28 more reported as skipped), and the Week 4 projects `ApexPost.Courier.Offline.Tests` (97 tests that use an embedded database and need no server), `ApexPost.Api.Tests` (144 tests with no database, and 8 more reported as skipped) and `ApexPost.Courier.Core.Tests` (65 tests). To run the skipped SQL Server tests too, point this at a server you control. The tests create and drop their own disposable database and never touch `ApexPostDb`:
+| Project | Level | What it holds |
+|---|---|---|
+| `ApexPost.UnitTests` | Unit | Domain rules, services with Moq, validation rules, the typed API client against fake HTTP handlers, the outbox with Moq, Week 3 domain and services |
+| `ApexPost.IntegrationTests` | Integration | Repositories on SQLite and SQL Server, Couchbase Lite, API and MVC endpoints through `WebApplicationFactory`, the resilience pipeline |
+| `ApexPost.Specs` | Acceptance (BDD) | Reqnroll feature files: shipment creation, scan sync, access control |
+| `ApexPost.Testing` | (no tests) | Shared test doubles and factories |
+
+One level at a time, or one area:
+
+```bash
+dotnet test ApexPost.UnitTests
+```
+
+```bash
+dotnet test ApexPost.IntegrationTests
+```
+
+```bash
+dotnet test ApexPost.Specs
+```
+
+```bash
+dotnet test ApexPost.slnx --filter "FullyQualifiedName~ShipmentService"
+```
+
+The SQL Server tests are reported as skipped unless a server is configured. Point them at a server you control: each run creates and drops its own disposable database and never touches `ApexPostDb`:
 
 ```bash
 APEXPOST_TEST_SQLSERVER="Server=localhost;User Id=<user>;Password=<password>;TrustServerCertificate=True" dotnet test ApexPost.slnx
 ```
+
+Code coverage (coverlet, free) and its summary (ReportGenerator, a local tool in `dotnet-tools.json`):
+
+```bash
+dotnet test ApexPost.slnx --collect:"XPlat Code Coverage" --results-directory TestResults
+```
+
+```bash
+dotnet tool restore
+```
+
+```bash
+dotnet reportgenerator -reports:"TestResults/*/coverage.cobertura.xml" -targetdir:docs/week5/coverage -reporttypes:"TextSummary;MarkdownSummaryGithub" -assemblyfilters:"-ApexPost.Testing;-ApexPost.Client;-ApexPost.Client.Consumer;-ApexPost.Courier.Offline.Harness" -classfilters:"-*Migrations*"
+```
+
+#### Latest results
+
+| Run | Unit | Acceptance (Specs) | Integration | Total |
+|---|---|---|---|---|
+| `dotnet test ApexPost.slnx` (no setup) | 316 passed | 24 passed | 315 passed, 36 skipped | **655 passed, 0 failed, 36 skipped** |
+| With `APEXPOST_TEST_SQLSERVER` (SQL Server 2022 in Docker) | 316 passed | 24 passed | 351 passed | **691 passed, 0 failed, 0 skipped** |
+
+The logs are [`docs/week5/test-run.txt`](docs/week5/test-run.txt) and [`docs/week5/test-run-with-sql-server.txt`](docs/week5/test-run-with-sql-server.txt). [`docs/week5/test-run.png`](docs/week5/test-run.png) is a Terminal screenshot of the first run. Line coverage is 78.1% and branch coverage 67.6%; [`docs/week5/coverage/Summary.txt`](docs/week5/coverage/Summary.txt) has it per class, and `TESTING-STRATEGY.md` section 9 comments on it.
 
 ### Web configuration reference
 
@@ -262,10 +312,10 @@ dotnet run --project ApexPost.Courier.Offline.Harness -- --explain
 
 The menu is Add Scan, Find by Tracking Number, List Pending, Simulate Sync, Delete Scan and Exit. A new scan is always saved on the device as Pending. Simulate Sync runs the outbox against a fake server, which rejects a scan whose notes contain `[fail]`, so you can see the Failed outcome. The change listener prints the ids of changed documents and a live pending count. Use one program at a time on a data folder (see the design note).
 
-The tests need no network and no server. They open a real embedded database in a temporary folder:
+The tests need no network and no server. The integration tests open a real embedded database in a temporary folder:
 
 ```bash
-dotnet test ApexPost.Courier.Offline.Tests
+dotnet test ApexPost.IntegrationTests --filter "FullyQualifiedName~IntegrationTests.Offline"
 ```
 
 Screenshots of the query results and the listener log, and the query plans, are in [`docs/week4-partA`](docs/week4-partA).
@@ -366,7 +416,7 @@ In Development only, and only because `appsettings.Development.json` sets `Jwt:A
 
 A 4½-minute demo video of login, offline scans, automatic sync, 401/403 and the circuit breaker is in [`docs/week4-partD/demo.mp4`](docs/week4-partD/demo.mp4), with a description in [`docs/week4-partD/README.md`](docs/week4-partD/README.md).
 
-`ApexPost.Courier` is a .NET MAUI app with four screens: Login, New Scan, Pending Scans and Sync Status. Its logic is in `ApexPost.Courier.Core`, which needs no MAUI workload and is tested by `ApexPost.Courier.Core.Tests`:
+`ApexPost.Courier` is a .NET MAUI app with four screens: Login, New Scan, Pending Scans and Sync Status. Its logic is in `ApexPost.Courier.Core`, which needs no MAUI workload and is tested by `ApexPost.UnitTests` and `ApexPost.IntegrationTests`:
 
 | Part | Where |
 |---|---|
@@ -391,7 +441,16 @@ The API base URLs are in `ApexPost.Courier/appsettings.json`: `https://10.0.2.2:
 
 **Run the app and sign in.** With the API running, start the app on an emulator (`dotnet build ApexPost.Courier -f net10.0-android -p:CourierPlatforms=net10.0-android -t:Run`, or press Run in Visual Studio with the Android emulator selected). On the Login screen in a Debug build, enter a courier id such as `CR-1001` and tap **Get development token (Debug build)**: the app asks the API's Development-only `/dev/token` for a Courier token and keeps it in SecureStorage. Or paste a token from `POST /dev/token` or `dotnet user-jwts`. A Release build has no development sign-in and needs a token from a real identity provider. Then add scans on New Scan, turn on airplane mode to see them stay Pending, and turn it off to watch Sync Status upload them.
 
-`CourierAppEndToEndTests` in `ApexPost.Api.Tests` runs the app's view models, client, handlers, resilience pipeline and Couchbase Lite store against the real API pipeline. It covers login, 25 scans saved offline, the automatic upload on reconnect, a resent scan stored only once, a refused scan marked Failed, and another courier's token refused.
+`CourierAppEndToEndTests` in `ApexPost.IntegrationTests` runs the app's sync service, client, handlers, resilience pipeline and Couchbase Lite store against the real API pipeline. It covers login, 25 scans saved offline, the automatic upload on reconnect, a resent scan stored only once, a refused scan marked Failed, and another courier's token refused.
+
+## Week 5: testing strategy
+
+The engineering lead asked for evidence that ApexPost is reliable and safe to change, not for the largest number of tests.
+
+- [`TESTING-STRATEGY.md`](TESTING-STRATEGY.md) was written first. It has the risk map, the test pyramid, the choice of xUnit, a review of every existing test class (kept, modified, removed or replaced, and why), the data access strategy, what is not tested, the results, a reflection and viva notes.
+- [`TDD-LOG.md`](TDD-LOG.md) records a new rule built test-first, in `RED:`, `GREEN:` and `REFACTOR:` commits: a scan recorded after its shipment was closed is rejected.
+- [`COPILOT-LOG.md`](COPILOT-LOG.md) records two GitHub Copilot drafts (outbox unit tests, the access-control feature), what was kept, changed or rejected, and three deliberate breaks of production code that the reviewed tests caught.
+- The new boundary tests found a real defect: tracking and phone numbers ending in a line break passed validation, because `$` in .NET also matches before a final line break. It is fixed, and the failing output is in [`docs/week5/trailing-newline-before-fix.txt`](docs/week5/trailing-newline-before-fix.txt).
 
 ## Solution layout
 
@@ -399,18 +458,16 @@ The API base URLs are in `ApexPost.Courier/appsettings.json`: `https://10.0.2.2:
 - `ApexPost.Application`: repository, unit-of-work and query contracts, DTOs, use cases, pricing.
 - `ApexPost.Infrastructure`: EF Core DbContext, configurations, migrations, repositories, query services, simulated courier service, cache, notifications.
 - `ApexPost.Web`: MVC controllers/views, authentication, middleware, filters, composition root.
-- `ApexPost.Test`: unit, model, MVC and SQL Server integration tests.
 - `ApexPost.Courier.Offline`: Week 4 Part A, the courier's offline store (see "Week 4 Part A" above). It does not reference any Week 3 project.
 - `ApexPost.Courier.Offline.Harness`: the console test harness for it.
-- `ApexPost.Courier.Offline.Tests`: its tests.
 - `ApexPost.Tracking`: Week 4 Part B, the shipment and scan domain and `ShipmentService`. It references the Week 3 Application project for `IBranchRepository`.
 - `ApexPost.Tracking.Infrastructure`: `TrackingDbContext`, its migrations and the EF store.
 - `ApexPost.Api`: the Web API.
-- `ApexPost.Api.Tests`: domain, service, HTTP, versioning, contract and SDK tests, and SQL Server tests that run when `APEXPOST_TEST_SQLSERVER` is set.
 - `ApexPost.Client`: the NSwag-generated v2 client, with its hand-written partial class and extensions.
 - `ApexPost.Client.Consumer`: the console program that uses it.
 - `ApexPost.Courier.Core`: Week 4 Part D, the courier app's logic: typed API client, handlers, resilience, JSON, sync and view models.
-- `ApexPost.Courier.Core.Tests`: its tests.
 - `ApexPost.Courier`: the .NET MAUI courier app (in `ApexPost.Mobile.slnx`, because it needs the MAUI workload).
+- `ApexPost.UnitTests`, `ApexPost.IntegrationTests`, `ApexPost.Specs`: the Week 5 test suites, by level (see "Tests" above and `TESTING-STRATEGY.md`).
+- `ApexPost.Testing`: test doubles and factories shared by the three test projects. It holds no tests.
 
 See `DESIGN.md` for the architecture and ER diagrams, middleware sequence, filters, ADRs and security decisions, and `PERFORMANCE.md` for index evidence.

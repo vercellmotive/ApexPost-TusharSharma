@@ -868,7 +868,7 @@ Each decision records its context, the decision, the alternatives considered and
 
 ## Validation
 
-`ApexPost.Test` has 209 tests, and all 209 passed against SQL Server 2022 Developer. Without `APEXPOST_TEST_SQLSERVER`, 181 run and 28 are reported as skipped. The Week 2 business-rule tests in `DomainRulesTests.cs` are identical to the Week 2 commit and pass.
+`ApexPost.Test` had 209 tests, and all 209 passed against SQL Server 2022 Developer. (Week 5 moved them into `ApexPost.UnitTests` and `ApexPost.IntegrationTests`; see `TESTING-STRATEGY.md`.) Without `APEXPOST_TEST_SQLSERVER`, 181 run and 28 are reported as skipped. The Week 2 business-rule tests in `DomainRulesTests.cs` are identical to the Week 2 commit and pass.
 
 | Layer | Needs a database | What it covers |
 |---|---|---|
