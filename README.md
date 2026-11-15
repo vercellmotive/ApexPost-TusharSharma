@@ -448,7 +448,9 @@ The API base URLs are in `ApexPost.Courier/appsettings.json`: `https://10.0.2.2:
 The engineering lead asked for evidence that ApexPost is reliable and safe to change, not for the largest number of tests.
 
 - [`TESTING-STRATEGY.md`](TESTING-STRATEGY.md) was written first. It has the risk map, the test pyramid, the choice of xUnit, a review of every existing test class (kept, modified, removed or replaced, and why), the data access strategy, what is not tested, the results, a reflection and viva notes.
-- [`TDD-LOG.md`](TDD-LOG.md) records a new rule built test-first, in `RED:`, `GREEN:` and `REFACTOR:` commits: a scan recorded after its shipment was closed is rejected.
+- [`TDD-LOG.md`](TDD-LOG.md) records a new rule built test-first, in `RED:`, `GREEN:` and `REFACTOR:` commits: a scan recorded after its shipment was closed is rejected. The output of the test run at each step is in [`docs/week5/tdd/`](docs/week5/tdd/).
+- **Branch:** the work was done on `week5-testing`. It was merged into `master`, this repository's main branch, through [pull request #27](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/27). The merge used a merge commit, not a squash, so `git log master` still shows `RED:` `2d72146`, `GREEN:` `24cbdb7` and `REFACTOR:` `b9aa7ba`.
+- **Test names:** every test follows `Method_Scenario_ExpectedResult`. The names that a second review found still had only two parts are listed in [`docs/week5/test-renames.md`](docs/week5/test-renames.md).
 - [`COPILOT-LOG.md`](COPILOT-LOG.md) records two GitHub Copilot drafts (outbox unit tests, the access-control feature), what was kept, changed or rejected, and three deliberate breaks of production code that the reviewed tests caught.
 - The new boundary tests found a real defect: tracking and phone numbers ending in a line break passed validation, because `$` in .NET also matches before a final line break. It is fixed, and the failing output is in [`docs/week5/trailing-newline-before-fix.txt`](docs/week5/trailing-newline-before-fix.txt).
 

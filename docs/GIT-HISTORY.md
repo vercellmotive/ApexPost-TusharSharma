@@ -142,7 +142,18 @@ One branch, merged into `master` with a merge commit (not squashed), so the `RED
 | `ccd7880` | 2026-11-15 | docs: write the TDD log and test the extracted domain members |
 | `34eb19f` | 2026-11-15 | test: add Reqnroll acceptance scenarios for shipment creation and scan sync |
 | `3754163` | 2026-11-15 | test: add Copilot-drafted outbox unit tests and access-control feature, reviewed |
-| (this file) | 2026-11-15 | docs: Week 5 results, coverage, README testing section and reflection |
+| `f80c0bb` | 2026-11-15 | docs: Week 5 results, coverage, README testing section and reflection |
+
+The branch was merged into `master` through [PR #27](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/27) as merge commit `2e1dc34`. Its parents are `946a0e9`, the previous `master`, and `f80c0bb`, so every commit above is in `master`'s history.
+
+### Week 5 follow-up (`week5-polish`)
+
+A review of the merged branch against the brief found 181 test names that did not fully follow `Method_Scenario_ExpectedResult`, and a few places where the documents did not link their evidence. This follow-up branch adds new commits on top of `master` and rewrites none.
+
+| Commit | Date | Message |
+|---|---|---|
+| `9cbcef7` | 2026-11-15 | test: give the remaining 181 tests three-part Method_Scenario_ExpectedResult names |
+| (this file) | 2026-11-15 | docs: link the TDD evidence and note the SpecFlow migration and the main branch |
 
 ## Early commit messages
 

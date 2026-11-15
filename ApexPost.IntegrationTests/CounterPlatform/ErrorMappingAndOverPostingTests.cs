@@ -39,7 +39,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
 
     [Theory]
     [MemberData(nameof(Failures))]
-    public async Task Exceptions_MapToProblemDetailsWithTheirStatus(Exception failure, int expectedStatus)
+    public async Task InvokeAsync_KnownException_WritesProblemDetailsWithItsStatus(Exception failure, int expectedStatus)
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -66,7 +66,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task ConcurrencyConflictDuringSale_Returns409ProblemDetails()
+    public async Task PostCounterCreate_ConcurrencyConflict_Returns409ProblemDetails()
     {
         // Arrange
         using var factory = new ConflictOnSaveFactory();
@@ -96,7 +96,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task OverPostedSaleFields_HaveNoEffect()
+    public async Task PostCounterCreate_OverPostedFields_AreIgnored()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -134,7 +134,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task OverPostedStaffFields_HaveNoEffect()
+    public async Task PostStaffEdit_OverPostedFields_AreIgnored()
     {
         // Arrange
         var client = CreateClient(_factory, "127.0.0.61");
@@ -169,7 +169,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task PriceRevision_IsSetBasedAndChangesOnlyItsCategory()
+    public async Task PostRevisePrices_OneCategory_ChangesOnlyThatCategory()
     {
         // Arrange
         var client = CreateClient(_factory, "127.0.0.61");
@@ -191,7 +191,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task ReportTotals_MatchThePersistedSale()
+    public async Task Reports_AfterAMoneyOrder_TotalsMatchThePersistedSale()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -225,7 +225,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task ReversalAndStockErrors_ReturnProblemDetailsAndAreAudited()
+    public async Task VoidRefundAndStockAdjust_InvalidRequest_ReturnProblemDetailsAndAreAudited()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -273,7 +273,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task AdministratorRequestsForUnknownRecords_Return404ProblemDetails()
+    public async Task AdminActions_UnknownRecord_Return404ProblemDetails()
     {
         // Arrange
         var client = CreateClient(_factory, "127.0.0.61");
@@ -318,7 +318,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task ResponsesWithOnlyAStatus_BecomeProblemDetails()
+    public async Task AnyEndpoint_StatusWithoutABody_BecomesProblemDetails()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -338,7 +338,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task PartnerApiErrors_AreProblemDetails()
+    public async Task GetParcelStatus_MissingOrWrongKey_ReturnsProblemDetails()
     {
         // Arrange
         var client = CreateClient(_factory, AllowedPartnerIp);
@@ -362,7 +362,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     [Theory]
     [InlineData("?trackingId=")]
     [InlineData("?trackingId=%20")]
-    public async Task PartnerApi_RejectsABlankTrackingId(string query)
+    public async Task GetParcelStatus_BlankTrackingId_Returns400ProblemDetails(string query)
     {
         // Arrange
         var client = CreateClient(_factory, AllowedPartnerIp);
@@ -373,7 +373,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
     }
 
     [Fact]
-    public async Task MaintenanceMode_ReturnsProblemDetails()
+    public async Task InvokeAsync_MaintenanceModeOn_ReturnsProblemDetails()
     {
         // Arrange
         var context = new DefaultHttpContext();

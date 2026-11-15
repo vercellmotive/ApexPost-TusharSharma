@@ -91,7 +91,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void Stock_CannotBeReducedBelowZero()
+        public void ReduceStock_BelowZero_ThrowsAndKeepsTheQuantity()
         {
             // Arrange
             var stock = new BranchStock
@@ -110,7 +110,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void Pricing_UsesServiceLevelZoneAndWeight()
+        public void CalculateShippingPrice_StandardParcelInZone2_UsesServiceLevelZoneAndWeight()
         {
             // Act
             var parcel = new ShippingDetails(
@@ -125,7 +125,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void Pricing_UsesInjectedRuleAndConfigurableWeightSurcharge()
+        public void CalculateShippingPrice_InjectedRuleAndSurcharge_UsesThem()
         {
             // Arrange
             var parcel = new ShippingDetails(
@@ -153,7 +153,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void IdentityVerification_StoresOnlyMaskedLastFourCharacters()
+        public void FromDocumentNumber_FullNumber_StoresOnlyTheMaskedLastFour()
         {
             // Act
             var details = IdVerificationDetails.FromDocumentNumber(DocumentType.Passport, "A123456789", true);
@@ -163,7 +163,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void IdentityVerification_RejectsUnmaskedDocumentValues()
+        public void Constructor_UnmaskedDocumentValue_Throws()
         {
             // Act and assert
             Assert.Throws<ArgumentException>(() =>
@@ -250,14 +250,14 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void Money_RejectsArithmeticAcrossCurrencies()
+        public void Add_DifferentCurrencies_Throws()
         {
             // Act and assert
             Assert.Throws<InvalidOperationException>(() => new Money(1m, "AUD") + new Money(1m, "USD"));
         }
 
         [Fact]
-        public void Transaction_RejectsUnsupportedPaymentMethod()
+        public void Complete_UnsupportedPaymentMethod_ThrowsAndStaysOpen()
         {
             // Arrange
             var transaction = new Transaction
@@ -276,7 +276,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void TransactionLineItem_ReflectionValidatorRejectsBlankDescription()
+        public void AddLineItem_BlankDescription_ThrowsFromTheReflectionValidator()
         {
             // Arrange
             var transaction = new Transaction
@@ -300,7 +300,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void Branch_UsesItsLocalTimeForOpeningHours()
+        public void IsOpen_UtcTime_UsesTheBranchLocalTime()
         {
             // Act
             var branch = new Branch
@@ -319,7 +319,7 @@ namespace ApexPost.UnitTests.CounterPlatform
         }
 
         [Fact]
-        public void InactiveOrOutOfBranchStaff_CannotTransact()
+        public void EnsureCanTransact_InactiveOrOtherBranchStaff_Throws()
         {
             // Arrange
             var staff = new Staff

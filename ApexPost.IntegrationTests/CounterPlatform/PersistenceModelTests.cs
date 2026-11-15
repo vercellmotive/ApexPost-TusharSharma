@@ -24,7 +24,7 @@ public sealed class PersistenceModelTests
             .Options);
 
     [Fact]
-    public void Model_HasNoChangesMissingFromMigrations()
+    public void Model_ComparedWithTheLastMigration_HasNoPendingChanges()
     {
         // Act
         using var db = CreateContext();
@@ -37,7 +37,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void BranchCodeAndSku_AreUniqueConstraints_AndStaffEmailIsAUniqueIndex()
+    public void Model_UniqueKeys_BranchCodeAndSkuAreConstraintsAndStaffEmailIsAnIndex()
     {
         // Act
         using var db = CreateContext();
@@ -56,7 +56,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void EveryNameColumn_IsUnicode()
+    public void Model_NameColumns_AreUnicode()
     {
         // Arrange
         using var db = CreateContext();
@@ -90,7 +90,7 @@ public sealed class PersistenceModelTests
     [InlineData("TransactionLines")]
     [InlineData("Payments")]
     [InlineData("AuditEntries")]
-    public void Schema_ContainsEveryRequiredTable(string table)
+    public void Model_RequiredTables_AreAllMapped(string table)
     {
         // Act
         using var db = CreateContext();
@@ -102,7 +102,7 @@ public sealed class PersistenceModelTests
     [Theory]
     [InlineData(typeof(BranchStock))]
     [InlineData(typeof(CounterTransactionRecord))]
-    public void ConcurrencyTables_HaveARowVersionShadowProperty(Type entityType)
+    public void Model_ConcurrencyTable_HasARowVersionShadowProperty(Type entityType)
     {
         // Arrange
         using var db = CreateContext();
@@ -117,7 +117,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void WorkloadIndexes_DeclaredByAttributeAlsoCarryTheirFluentOptions()
+    public void Model_IndexesDeclaredByAttribute_CarryTheirFluentOptions()
     {
         // Arrange
         using var db = CreateContext();
@@ -141,7 +141,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void MaskedDocumentColumn_CannotHoldAFullDocumentNumber()
+    public void Model_MaskedDocumentColumn_CannotHoldAFullDocumentNumber()
     {
         // Arrange
         using var db = CreateContext();
@@ -155,7 +155,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void IdempotentScript_DeploysProceduresInTheirOwnBatches()
+    public void GenerateScript_Idempotent_PutsEachProcedureInItsOwnBatch()
     {
         // Arrange
         using var db = CreateContext();
@@ -173,7 +173,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void ReadQueries_TranslateToSqlWithoutTracking()
+    public void ToQueryString_ReadQueries_TranslateWithoutTracking()
     {
         // Arrange
         using var db = CreateContext();
@@ -211,7 +211,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void BranchesAndDetailQueries_TranslateWithSplitQuery()
+    public void ToQueryString_BranchQueryAsSplitQuery_Translates()
     {
         // Arrange
         using var db = CreateContext();
@@ -224,7 +224,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void RepositoryAndDashboardQueries_TranslateToSql()
+    public void ToQueryString_RepositoryAndDashboardQueries_TranslateToSql()
     {
         // Arrange
         using var db = CreateContext();
@@ -243,7 +243,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public async Task PriceRevision_TranslatesToOneSetBasedUpdate()
+    public async Task ReviseByCategoryAsync_OneCategory_RunsOneSetBasedUpdate()
     {
         // Arrange
         var capture = new CaptureNonQuery();
@@ -263,7 +263,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void EveryTable_HasAuditColumns()
+    public void Model_EveryTable_HasAuditColumns()
     {
         // Act
         using var db = CreateContext();
@@ -280,7 +280,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void InactiveFlags_AreSentExplicitlyOnInsert()
+    public void Add_InactiveStaff_SendsIsActiveExplicitly()
     {
         // Arrange
         using var db = CreateContext();
@@ -296,7 +296,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void ReferenceRates_MatchThePricingAndWeightRules()
+    public void ShippingRates_ReferenceData_MatchThePricingAndWeightRules()
     {
         // Act
         var rates = ReferenceData.ShippingRates().ToList();
@@ -310,7 +310,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void TransactionMapper_RoundTripsEveryLineType()
+    public void ToDomain_RecordWithEveryLineType_RoundTrips()
     {
         // Arrange
         var transaction = new Transaction
@@ -350,7 +350,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void Reversal_AddsAPaymentAndKeepsTheSalePayment()
+    public void CopyStateTo_ReversedSale_AddsAPaymentAndKeepsTheSalePayment()
     {
         // Arrange
         var transaction = new Transaction { Id = Guid.NewGuid(), BranchCode = new BranchCode("B001"), CounterId = "C01", ClerkStaffId = "STF002" };
@@ -370,7 +370,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void HistoryGenerator_MeetsTheVolumeAndStaysValid()
+    public void BuildHistory_SameInputsTwice_MeetsTheVolumeAndStaysValid()
     {
         // Arrange
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -405,7 +405,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void DependencyDirection_PointsInward()
+    public void AssemblyReferences_EveryLayer_PointInward()
     {
         // Act
         static IEnumerable<string> References<T>() =>
@@ -423,7 +423,7 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void RepositoryContracts_NeverExposeIQueryableOrCommit()
+    public void RepositoryInterfaces_EveryMember_NeverExposesIQueryableOrCommit()
     {
         // Act
         var repositories = typeof(IUnitOfWork).Assembly.GetTypes()
@@ -445,7 +445,7 @@ public sealed class PersistenceModelTests
             .Any(project => file.Contains($"{Path.DirectorySeparatorChar}{project}{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
 
     [Fact]
-    public void ApplicationCode_NeverCallsEnsureCreated()
+    public void SourceFiles_ApplicationCode_NeverCallEnsureCreated()
     {
         // Arrange
         var root = FindSolutionRoot();

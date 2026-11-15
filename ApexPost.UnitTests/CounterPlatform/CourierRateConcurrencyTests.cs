@@ -15,7 +15,7 @@ public sealed class CourierRateConcurrencyTests
         new(true, Weight.FromKilograms(1m), new Dimensions(1, 1, 1), "Zone 1", ServiceLevel.Standard);
 
     [Fact]
-    public async Task RateLookups_NeverExceedTheConfiguredConcurrencyLimit()
+    public async Task GetEstimatedCourierRateAsync_TwentyParallelLookups_NeverExceedsTheConcurrencyLimit()
     {
         // Arrange
         var zones = new TrackingZoneLookup();
@@ -29,7 +29,7 @@ public sealed class CourierRateConcurrencyTests
     }
 
     [Fact]
-    public async Task ZoneLookup_LoadsTheRepositoryOnceAndMatchesAnyCase()
+    public async Task FindByNameAsync_ParallelLookupsInAnotherCase_LoadsTheRepositoryOnceAndMatches()
     {
         // Arrange
         var repository = new CountingZoneRepository();

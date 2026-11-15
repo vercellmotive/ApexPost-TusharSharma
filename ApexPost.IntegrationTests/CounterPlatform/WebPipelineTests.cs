@@ -21,7 +21,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task SecurityHeaders_ArePresent()
+    public async Task GetHealth_AnyRequest_ReturnsTheSecurityHeaders()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -38,7 +38,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task IntegrationEndpoint_RequiresApiKey()
+    public async Task GetParcelStatus_WithoutAnApiKey_Returns401()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -90,7 +90,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task PartnerRateLimit_Returns429AfterItsRequestBudgetIsExceeded()
+    public async Task GetParcelStatus_MoreRequestsThanTheBudget_Returns429()
     {
         // Arrange
         using var rateLimitFactory = new PartnerRateLimitFactory();
@@ -156,7 +156,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task UnauthenticatedAccess_RedirectsToLogin()
+    public async Task GetHome_NotSignedIn_RedirectsToLogin()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -249,7 +249,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task CorrelationHeader_IsReturned()
+    public async Task GetHealth_AnyRequest_ReturnsTheCorrelationHeader()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -264,7 +264,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task AuthenticatedBranchViews_RenderAndAuditorReportIsRestricted()
+    public async Task BranchViews_SignedIn_RenderAndRestrictTheAuditReport()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -328,7 +328,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task FailedHighValueMoneyOrder_DoesNotConsumeStock()
+    public async Task PostCounterCreate_HighValueMoneyOrderFails_DoesNotConsumeStock()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -336,7 +336,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
             AllowAutoRedirect = false,
             BaseAddress = new Uri("https://localhost")
         });
-        client.DefaultRequestHeaders.Add("X-Forwarded-For", TestClientAddress.For(nameof(FailedHighValueMoneyOrder_DoesNotConsumeStock)));
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", TestClientAddress.For(nameof(PostCounterCreate_HighValueMoneyOrderFails_DoesNotConsumeStock)));
 
         // Act
         var loginPage = await client.GetAsync("/Account/Login");
@@ -452,7 +452,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task BranchManagerStockAdjustment_UpdatesInventoryAndAuditRecord()
+    public async Task PostStockAdjust_BranchManager_UpdatesInventoryAndTheAuditRecord()
     {
         // Arrange
         var client = await CreateAuthenticatedClientAsync("alice@apexpost.com", "127.0.0.41");
@@ -499,7 +499,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task SuccessfulCounterSale_IsPersistedAndAudited()
+    public async Task PostCounterCreate_ValidSale_IsPersistedAndAudited()
     {
         // Arrange
         var client = await CreateAuthenticatedClientAsync("alice@apexpost.com", "127.0.0.41");

@@ -77,7 +77,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     private static readonly Sku Sku1 = new("SKU-001");
 
     [SqlServerFact]
-    public async Task Seed_MeetsTheRequiredVolumes()
+    public async Task Seed_FreshDatabase_MeetsTheRequiredVolumes()
     {
         // Act
         await using var db = database.CreateContext();
@@ -91,7 +91,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task Repository_RoundTripsATransactionThroughEveryTable()
+    public async Task SaveChangesAsync_TransactionWithEveryLineType_RoundTripsThroughEveryTable()
     {
         // Arrange
         var id = Guid.NewGuid();
@@ -151,7 +151,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task FailedSale_RollsBackStockAndTransactionTogether()
+    public async Task SaveChangesAsync_SaleFailsInTheDatabase_RollsBackStockAndTransactionTogether()
     {
         // Arrange
         await using var db = database.CreateContext();
@@ -175,7 +175,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task RowVersion_StopsTwoClerksSellingTheSameUnit()
+    public async Task SaveChangesAsync_TwoClerksSellTheSameUnit_SecondThrowsConcurrencyConflict()
     {
         // Arrange
         await using var first = database.CreateContext();
@@ -192,7 +192,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task UniqueEmail_SurfacesAsDuplicateValue()
+    public async Task SaveChangesAsync_DuplicateStaffEmail_ThrowsDuplicateValue()
     {
         // Arrange
         await using var db = database.CreateContext();
@@ -203,7 +203,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task UniqueValues_AreEnforced_AndAStaffEmailCanStillBeCorrected()
+    public async Task UniqueConstraints_DuplicateValues_AreRejectedButAStaffEmailCanBeCorrected()
     {
         // Act and assert
         try
@@ -234,7 +234,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task CheckConstraints_RejectNegativeStockAndUnmaskedDocuments()
+    public async Task SaveChangesAsync_NegativeStockOrUnmaskedDocument_IsRejectedByCheckConstraints()
     {
         // Act
         await using var db = database.CreateContext();
@@ -249,7 +249,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task CheckConstraint_RejectsNegativeShipmentDimensions()
+    public async Task SaveChangesAsync_NegativeShipmentDimensions_IsRejectedByCheckConstraint()
     {
         // Act
         await using var db = database.CreateContext();
@@ -274,7 +274,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task AdjustStockProcedure_UpdatesStockAndWritesHistory()
+    public async Task AdjustAsync_ValidAdjustment_UpdatesStockAndWritesHistory()
     {
         // Arrange
         await using var db = database.CreateContext();
@@ -290,7 +290,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task AdjustStockProcedure_RejectsOverdrawAndUnknownStockWithoutChangingAnything()
+    public async Task AdjustAsync_OverdrawOrUnknownStock_ThrowsAndChangesNothing()
     {
         // Arrange
         await using var db = database.CreateContext();
@@ -307,7 +307,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task AdjustStockProcedure_RejectsABlankOrUnknownStaffIdBeforeChangingAnything()
+    public async Task AdjustAsync_BlankOrUnknownStaffId_ThrowsAndChangesNothing()
     {
         // Arrange
         await using var db = database.CreateContext();
@@ -329,7 +329,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task ReportProcedures_MatchTotalsCalculatedFromTheTables()
+    public async Task ReportProcedures_LatestSalesDate_MatchTotalsCalculatedFromTheTables()
     {
         // Arrange
         await using var db = database.CreateContext();
@@ -361,7 +361,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task LeastPrivilegeRole_CanRunTheAppButCannotDeleteOrChangeSchema()
+    public async Task AppRole_ExecutingAsTheAppUser_CanRunTheAppButCannotDeleteOrChangeSchema()
     {
         // Arrange
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -411,7 +411,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task ReportingRole_CanRunTheReportProceduresButCannotReadTablesOrChangeStock()
+    public async Task ReportingRole_ExecutingAsTheReportUser_CanRunReportsButCannotReadTablesOrChangeStock()
     {
         // Arrange
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -459,7 +459,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task OppositeUpdateOrder_Deadlocks_AndTheVictimIsRetryableAndRolledBack()
+    public async Task ExecuteNonQueryAsync_OppositeUpdateOrder_DeadlocksWithARetryableRolledBackVictim()
     {
         // Arrange
         const string first = "UPDATE dbo.BranchStock SET QuantityOnHand = QuantityOnHand + 1 WHERE BranchCode = 'B001' AND Sku = 'SKU-001'";
@@ -517,7 +517,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task PriceRevision_UsesOneSetBasedStatement()
+    public async Task ReviseByCategoryAsync_OneCategoryOnSqlServer_UsesOneSetBasedStatement()
     {
         // Arrange
         var counter = new CommandCounter();
@@ -550,7 +550,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task FreeIdentityCheck_RecordsNoPayment_AndAZeroPaymentIsRejected()
+    public async Task SaveChangesAsync_FreeIdentityCheck_RecordsNoPaymentAndRejectsAZeroPayment()
     {
         // Arrange
         var id = Guid.NewGuid();
@@ -585,7 +585,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task ScreenQueries_DoNotIssueOneQueryPerRow()
+    public async Task GetBranchTransactionsAsync_TwoHundredRows_DoesNotIssueOneQueryPerRow()
     {
         // Arrange
         var counter = new CommandCounter();
@@ -622,7 +622,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task AuditStore_WritesToAuditEntriesIndependently()
+    public async Task AppendAsync_NewEntry_IsWrittenToAuditEntries()
     {
         // Arrange
         using var factory = new SqlServerWebFactory(database.ConnectionString);
@@ -637,7 +637,7 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     }
 
     [SqlServerFact]
-    public async Task Mvc_SalePersistsVoidNeedsManagerAndErrorsAreProblemDetails()
+    public async Task CounterCreateAndVoid_OnSqlServer_PersistsSaleNeedsManagerAndReturnsProblemDetails()
     {
         // Arrange
         using var factory = new SqlServerWebFactory(database.ConnectionString);

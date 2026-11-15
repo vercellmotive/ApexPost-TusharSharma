@@ -9,7 +9,7 @@ namespace ApexPost.IntegrationTests.Offline;
 public class ChangeListenerTests
 {
     [Fact]
-    public void AddingAScan_RaisesTheEventWithItsIdAndThePendingCount()
+    public void Create_NewScan_RaisesTheEventWithItsIdAndThePendingCount()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -24,7 +24,7 @@ public class ChangeListenerTests
     }
 
     [Fact]
-    public void DeletingAScan_RaisesTheEventToo()
+    public void Delete_ExistingScan_RaisesTheEvent()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -40,7 +40,7 @@ public class ChangeListenerTests
     }
 
     [Fact]
-    public void TheIdsOfEveryChangedDocument_AreWrittenToTheLog()
+    public void Listener_SeveralChanges_WritesEveryChangedIdToTheLog()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -78,7 +78,7 @@ public class ChangeListenerTests
     }
 
     [Fact]
-    public void ManyChanges_AreAllReported()
+    public void Create_TwelveScans_ReportsEveryChange()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -93,7 +93,7 @@ public class ChangeListenerTests
     }
 
     [Fact]
-    public void TheListener_IsRegisteredWhileOpen_AndRemovedOnDispose()
+    public void Listener_OpenThenDispose_IsRegisteredThenRemoved()
     {
         // Act
         using var db = new TestCourierDatabase();
@@ -109,7 +109,7 @@ public class ChangeListenerTests
     }
 
     [Fact]
-    public async Task OnceTheListenerIsRemoved_NoFurtherChangesAreReported()
+    public async Task Create_AfterTheListenerIsRemoved_ReportsNothing()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -150,7 +150,7 @@ public class ChangeListenerTests
     }
 
     [Fact]
-    public void ASubscriberThatThrows_DoesNotStopTheListenerOrTheProcess()
+    public void Create_SubscriberThrows_ListenerAndProcessKeepRunning()
     {
         // Arrange
         using var db = new TestCourierDatabase();

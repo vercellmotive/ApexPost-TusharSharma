@@ -1,15 +1,15 @@
 $ dotnet test ApexPost.slnx
   Determining projects to restore...
   All projects are up-to-date for restore.
-  ApexPost.Client -> ./ApexPost.Client/bin/Debug/net10.0/ApexPost.Client.dll
-  ApexPost.Domain -> ./ApexPost.Domain/bin/Debug/net10.0/ApexPost.Domain.dll
   ApexPost.Courier.Offline -> ./ApexPost.Courier.Offline/bin/Debug/net10.0/ApexPost.Courier.Offline.dll
-  ApexPost.Client.Consumer -> ./ApexPost.Client.Consumer/bin/Debug/net10.0/ApexPost.Client.Consumer.dll
+  ApexPost.Domain -> ./ApexPost.Domain/bin/Debug/net10.0/ApexPost.Domain.dll
+  ApexPost.Client -> ./ApexPost.Client/bin/Debug/net10.0/ApexPost.Client.dll
   ApexPost.Application -> ./ApexPost.Application/bin/Debug/net10.0/ApexPost.Application.dll
-  ApexPost.Tracking -> ./ApexPost.Tracking/bin/Debug/net10.0/ApexPost.Tracking.dll
   ApexPost.Courier.Offline.Harness -> ./ApexPost.Courier.Offline.Harness/bin/Debug/net10.0/ApexPost.Courier.Offline.Harness.dll
-  ApexPost.Infrastructure -> ./ApexPost.Infrastructure/bin/Debug/net10.0/ApexPost.Infrastructure.dll
   ApexPost.Courier.Core -> ./ApexPost.Courier.Core/bin/Debug/net10.0/ApexPost.Courier.Core.dll
+  ApexPost.Client.Consumer -> ./ApexPost.Client.Consumer/bin/Debug/net10.0/ApexPost.Client.Consumer.dll
+  ApexPost.Tracking -> ./ApexPost.Tracking/bin/Debug/net10.0/ApexPost.Tracking.dll
+  ApexPost.Infrastructure -> ./ApexPost.Infrastructure/bin/Debug/net10.0/ApexPost.Infrastructure.dll
   ApexPost.Tracking.Infrastructure -> ./ApexPost.Tracking.Infrastructure/bin/Debug/net10.0/ApexPost.Tracking.Infrastructure.dll
   ApexPost.Web -> ./ApexPost.Web/bin/Debug/net10.0/ApexPost.Web.dll
   ApexPost.Api -> ./ApexPost.Api/bin/Debug/net10.0/ApexPost.Api.dll
@@ -17,84 +17,87 @@ $ dotnet test ApexPost.slnx
   ApexPost.UnitTests -> ./ApexPost.UnitTests/bin/Debug/net10.0/ApexPost.UnitTests.dll
 Test run for ./ApexPost.UnitTests/bin/Debug/net10.0/ApexPost.UnitTests.dll (.NETCoreApp,Version=v10.0)
 A total of 1 test files matched the specified pattern.
-Passed!  - Failed:     0, Passed:   316, Skipped:     0, Total:   316, Duration: 721 ms - ApexPost.UnitTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   316, Skipped:     0, Total:   316, Duration: 715 ms - ApexPost.UnitTests.dll (net10.0)
   ApexPost.Specs -> ./ApexPost.Specs/bin/Debug/net10.0/ApexPost.Specs.dll
-  ApexPost.IntegrationTests -> ./ApexPost.IntegrationTests/bin/Debug/net10.0/ApexPost.IntegrationTests.dll
 Test run for ./ApexPost.Specs/bin/Debug/net10.0/ApexPost.Specs.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  ApexPost.IntegrationTests -> ./ApexPost.IntegrationTests/bin/Debug/net10.0/ApexPost.IntegrationTests.dll
 Test run for ./ApexPost.IntegrationTests/bin/Debug/net10.0/ApexPost.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
 A total of 1 test files matched the specified pattern.
-A total of 1 test files matched the specified pattern.
-[xUnit.net 00:00:00.22]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_NotFoundAndProcedureErrors_AreProblemDetailsAndChangeNothing [SKIP]
-[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AuditStore_WritesToAuditEntriesIndependently [SKIP]
-[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportProcedures_MatchTotalsCalculatedFromTheTables [SKIP]
-[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.FailedSale_RollsBackStockAndTransactionTogether [SKIP]
+[xUnit.net 00:00:00.22]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_TwoClerksSellTheSameUnit_SecondThrowsConcurrencyConflict [SKIP]
+[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_NotFoundAndProcedureErrors_AreProblemDetailsAndChangeNothing [SKIP]
+[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportProcedures_LatestSalesDate_MatchTotalsCalculatedFromTheTables [SKIP]
+[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportingRole_ExecutingAsTheReportUser_CanRunReportsButCannotReadTablesOrChangeStock [SKIP]
+[xUnit.net 00:00:00.23]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.UniqueConstraints_DuplicateValues_AreRejectedButAStaffEmailCanBeCorrected [SKIP]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_TwoClerksSellTheSameUnit_SecondThrowsConcurrencyConflict [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_NotFoundAndProcedureErrors_AreProblemDetailsAndChangeNothing [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AuditStore_WritesToAuditEntriesIndependently [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportProcedures_MatchTotalsCalculatedFromTheTables [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.FailedSale_RollsBackStockAndTransactionTogether [1 ms]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.OppositeUpdateOrder_Deadlocks_AndTheVictimIsRetryableAndRolledBack [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustStockProcedure_UpdatesStockAndWritesHistory [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Seed_MeetsTheRequiredVolumes [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.FreeIdentityCheck_RecordsNoPayment_AndAZeroPaymentIsRejected [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustStockProcedure_RejectsABlankOrUnknownStaffIdBeforeChangingAnything [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_Reports_ShowTheTotalsHeldInTheTables [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.PriceRevision_UsesOneSetBasedStatement [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.RowVersion_StopsTwoClerksSellingTheSameUnit [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustStockProcedure_RejectsOverdrawAndUnknownStockWithoutChangingAnything [SKIP]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.OppositeUpdateOrder_Deadlocks_AndTheVictimIsRetryableAndRolledBack [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustStockProcedure_UpdatesStockAndWritesHistory [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Seed_MeetsTheRequiredVolumes [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.FreeIdentityCheck_RecordsNoPayment_AndAZeroPaymentIsRejected [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustStockProcedure_RejectsABlankOrUnknownStaffIdBeforeChangingAnything [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportProcedures_LatestSalesDate_MatchTotalsCalculatedFromTheTables [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportingRole_ExecutingAsTheReportUser_CanRunReportsButCannotReadTablesOrChangeStock [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.UniqueConstraints_DuplicateValues_AreRejectedButAStaffEmailCanBeCorrected [1 ms]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Seed_FreshDatabase_MeetsTheRequiredVolumes [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.GetBranchTransactionsAsync_TwoHundredRows_DoesNotIssueOneQueryPerRow [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AppendAsync_NewEntry_IsWrittenToAuditEntries [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AppRole_ExecutingAsTheAppUser_CanRunTheAppButCannotDeleteOrChangeSchema [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ExecuteNonQueryAsync_OppositeUpdateOrder_DeadlocksWithARetryableRolledBackVictim [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_Reports_ShowTheTotalsHeldInTheTables [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_SaleFailsInTheDatabase_RollsBackStockAndTransactionTogether [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustAsync_ValidAdjustment_UpdatesStockAndWritesHistory [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReviseByCategoryAsync_OneCategoryOnSqlServer_UsesOneSetBasedStatement [SKIP]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Seed_FreshDatabase_MeetsTheRequiredVolumes [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.GetBranchTransactionsAsync_TwoHundredRows_DoesNotIssueOneQueryPerRow [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AppendAsync_NewEntry_IsWrittenToAuditEntries [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AppRole_ExecutingAsTheAppUser_CanRunTheAppButCannotDeleteOrChangeSchema [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ExecuteNonQueryAsync_OppositeUpdateOrder_DeadlocksWithARetryableRolledBackVictim [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_Reports_ShowTheTotalsHeldInTheTables [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.PriceRevision_UsesOneSetBasedStatement [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.RowVersion_StopsTwoClerksSellingTheSameUnit [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustStockProcedure_RejectsOverdrawAndUnknownStockWithoutChangingAnything [1 ms]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.LeastPrivilegeRole_CanRunTheAppButCannotDeleteOrChangeSchema [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SaleOfSeveralProducts_ReadsStockInOneQuery [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.CheckConstraints_RejectNegativeStockAndUnmaskedDocuments [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.UniqueValues_AreEnforced_AndAStaffEmailCanStillBeCorrected [SKIP]
-[xUnit.net 00:00:00.27]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ScreenQueries_DoNotIssueOneQueryPerRow [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Shipment_WithOrWithoutDestination_LoadsAddressOnlyWhenPresent [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SaleThatLosesEveryRowVersionRace_Returns409AndChangesNothing [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Repository_RoundTripsATransactionThroughEveryTable [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SalePersistsVoidNeedsManagerAndErrorsAreProblemDetails [SKIP]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.LeastPrivilegeRole_CanRunTheAppButCannotDeleteOrChangeSchema [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_SaleFailsInTheDatabase_RollsBackStockAndTransactionTogether [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustAsync_ValidAdjustment_UpdatesStockAndWritesHistory [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReviseByCategoryAsync_OneCategoryOnSqlServer_UsesOneSetBasedStatement [1 ms]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_NegativeShipmentDimensions_IsRejectedByCheckConstraint [SKIP]
+[xUnit.net 00:00:00.25]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_DuplicateStaffEmail_ThrowsDuplicateValue [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SaleOfSeveralProducts_ReadsStockInOneQuery [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.CounterCreateAndVoid_OnSqlServer_PersistsSaleNeedsManagerAndReturnsProblemDetails [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Shipment_WithOrWithoutDestination_LoadsAddressOnlyWhenPresent [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_TransactionWithEveryLineType_RoundTripsThroughEveryTable [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SaleThatLosesEveryRowVersionRace_Returns409AndChangesNothing [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_FreeIdentityCheck_RecordsNoPaymentAndRejectsAZeroPayment [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.PriceRevision_ThatRoundsAPriceToZero_IsRejectedAndChangesNothing [SKIP]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_NegativeShipmentDimensions_IsRejectedByCheckConstraint [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_DuplicateStaffEmail_ThrowsDuplicateValue [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SaleOfSeveralProducts_ReadsStockInOneQuery [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.CheckConstraints_RejectNegativeStockAndUnmaskedDocuments [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.UniqueValues_AreEnforced_AndAStaffEmailCanStillBeCorrected [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ScreenQueries_DoNotIssueOneQueryPerRow [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.CounterCreateAndVoid_OnSqlServer_PersistsSaleNeedsManagerAndReturnsProblemDetails [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Shipment_WithOrWithoutDestination_LoadsAddressOnlyWhenPresent [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_TransactionWithEveryLineType_RoundTripsThroughEveryTable [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SaleThatLosesEveryRowVersionRace_Returns409AndChangesNothing [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Repository_RoundTripsATransactionThroughEveryTable [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_SalePersistsVoidNeedsManagerAndErrorsAreProblemDetails [1 ms]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.UniqueEmail_SurfacesAsDuplicateValue [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportingRole_CanRunTheReportProceduresButCannotReadTablesOrChangeStock [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.PriceRevision_ThatRoundsAPriceToZero_IsRejectedAndChangesNothing [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_Void_RestocksThroughTheProcedureAndWritesHistory [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.CheckConstraint_RejectsNegativeShipmentDimensions [SKIP]
-[xUnit.net 00:00:00.28]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_VoidThatLosesItsRowVersionRace_RollsBackTheProcedureToo [SKIP]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.UniqueEmail_SurfacesAsDuplicateValue [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.ReportingRole_CanRunTheReportProceduresButCannotReadTablesOrChangeStock [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_FreeIdentityCheck_RecordsNoPaymentAndRejectsAZeroPayment [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.PriceRevision_ThatRoundsAPriceToZero_IsRejectedAndChangesNothing [1 ms]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_NegativeStockOrUnmaskedDocument_IsRejectedByCheckConstraints [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_Void_RestocksThroughTheProcedureAndWritesHistory [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustAsync_BlankOrUnknownStaffId_ThrowsAndChangesNothing [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustAsync_OverdrawOrUnknownStock_ThrowsAndChangesNothing [SKIP]
+[xUnit.net 00:00:00.26]     ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_VoidThatLosesItsRowVersionRace_RollsBackTheProcedureToo [SKIP]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.SaveChangesAsync_NegativeStockOrUnmaskedDocument_IsRejectedByCheckConstraints [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_Void_RestocksThroughTheProcedureAndWritesHistory [1 ms]
-  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.CheckConstraint_RejectsNegativeShipmentDimensions [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustAsync_BlankOrUnknownStaffId_ThrowsAndChangesNothing [1 ms]
+  Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.AdjustAsync_OverdrawOrUnknownStock_ThrowsAndChangesNothing [1 ms]
   Skipped ApexPost.IntegrationTests.CounterPlatform.SqlServerIntegrationTests.Mvc_VoidThatLosesItsRowVersionRace_RollsBackTheProcedureToo [1 ms]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Migration_FreshDatabase_CreatesTrackingSchemaBesideWeek3 [SKIP]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.CheckConstraint_DeliveredScanWithoutSignature_IsRejected [SKIP]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Remove_ShipmentWithScans_DeletesItsScans [SKIP]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.SaveChanges_RacingDuplicate_ThrowsDuplicateValueException [SKIP]
+
+Passed!  - Failed:     0, Passed:    24, Skipped:     0, Total:    24, Duration: 4 s - ApexPost.Specs.dll (net10.0)
+[xUnit.net 00:00:04.80]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Migration_FreshDatabase_CreatesTrackingSchemaBesideWeek3 [SKIP]
+[xUnit.net 00:00:04.80]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.CheckConstraint_DeliveredScanWithoutSignature_IsRejected [SKIP]
+[xUnit.net 00:00:04.80]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Remove_ShipmentWithScans_DeletesItsScans [SKIP]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Migration_FreshDatabase_CreatesTrackingSchemaBesideWeek3 [1 ms]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.CheckConstraint_DeliveredScanWithoutSignature_IsRejected [1 ms]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Remove_ShipmentWithScans_DeletesItsScans [1 ms]
+[xUnit.net 00:00:04.80]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.SaveChanges_RacingDuplicate_ThrowsDuplicateValueException [SKIP]
+[xUnit.net 00:00:04.82]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Api_EndToEndAgainstSqlServer_Succeeds [SKIP]
+[xUnit.net 00:00:04.82]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.ListAsync_CityInOtherCase_FiltersAndCarriesLatestScan [SKIP]
+[xUnit.net 00:00:04.82]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.UploadScans_ParallelSameBatch_StoresEachScanOnce [SKIP]
+[xUnit.net 00:00:04.82]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.SaveChanges_LostUpdate_ThrowsConcurrencyConflict [SKIP]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.SaveChanges_RacingDuplicate_ThrowsDuplicateValueException [1 ms]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Api_EndToEndAgainstSqlServer_Succeeds [SKIP]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.ListAsync_CityInOtherCase_FiltersAndCarriesLatestScan [SKIP]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.UploadScans_ParallelSameBatch_StoresEachScanOnce [SKIP]
-[xUnit.net 00:00:00.70]     ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.SaveChanges_LostUpdate_ThrowsConcurrencyConflict [SKIP]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.Api_EndToEndAgainstSqlServer_Succeeds [1 ms]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.ListAsync_CityInOtherCase_FiltersAndCarriesLatestScan [1 ms]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.UploadScans_ParallelSameBatch_StoresEachScanOnce [1 ms]
   Skipped ApexPost.IntegrationTests.Tracking.SqlServerTrackingTests.SaveChanges_LostUpdate_ThrowsConcurrencyConflict [1 ms]
-Passed!  - Failed:     0, Passed:    24, Skipped:     0, Total:    24, Duration: 2 s - ApexPost.Specs.dll (net10.0)
-Passed!  - Failed:     0, Passed:   315, Skipped:    36, Total:   351, Duration: 5 s - ApexPost.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   315, Skipped:    36, Total:   351, Duration: 8 s - ApexPost.IntegrationTests.dll (net10.0)

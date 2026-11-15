@@ -9,7 +9,7 @@ namespace ApexPost.UnitTests.CounterPlatform;
 public sealed class AuthorizationTests
 {
     [Fact]
-    public async Task SameBranchPolicy_RejectsAnotherBranchRouteValue()
+    public async Task HandleAsync_RouteValueForAnotherBranch_DoesNotSucceed()
     {
         // Arrange
         var requirement = new SameBranchRequirement();
@@ -29,7 +29,7 @@ public sealed class AuthorizationTests
     }
 
     [Fact]
-    public async Task SameBranchPolicy_AllowsAssignedBranch()
+    public async Task HandleAsync_RouteValueForAssignedBranch_Succeeds()
     {
         // Arrange
         var requirement = new SameBranchRequirement();

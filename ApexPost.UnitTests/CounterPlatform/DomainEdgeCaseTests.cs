@@ -14,7 +14,7 @@ public sealed class DomainEdgeCaseTests
     private readonly TieredShippingPricingStrategy _pricing = new();
 
     [Fact]
-    public void LetterOverItsWeightLimit_IsRejected()
+    public void ValidateWeightLimits_LetterOverItsWeightLimit_Throws()
     {
         // Arrange
         var letter = new ShippingDetails(false, Weight.FromKilograms(0.6m), default, "Zone 1", ServiceLevel.Standard);
@@ -24,7 +24,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void LetterWithoutDimensions_IsAccepted()
+    public void ValidateWeightLimits_LetterWithoutDimensions_DoesNotThrow()
     {
         // Arrange
         var letter = new ShippingDetails(false, Weight.FromKilograms(0.2m), default, "Zone 1", ServiceLevel.Express);
@@ -34,7 +34,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void ParcelWithoutDimensions_IsRejected()
+    public void ValidateWeightLimits_ParcelWithoutDimensions_Throws()
     {
         // Arrange
         var parcel = new ShippingDetails(true, Weight.FromKilograms(1m), default, "Zone 1", ServiceLevel.Standard);
@@ -46,7 +46,7 @@ public sealed class DomainEdgeCaseTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void ZeroWeight_IsRejected(bool isParcel)
+    public void ValidateWeightLimits_ZeroWeight_Throws(bool isParcel)
     {
         // Arrange
         var details = new ShippingDetails(isParcel, Weight.FromKilograms(0m), new Dimensions(1, 1, 1), "Zone 1", ServiceLevel.Standard);
@@ -58,7 +58,7 @@ public sealed class DomainEdgeCaseTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void NegativeDimensions_AreRejected(bool isParcel)
+    public void ValidateWeightLimits_NegativeDimensions_Throws(bool isParcel)
     {
         // Arrange
         var details = new ShippingDetails(isParcel, Weight.FromKilograms(1m), new Dimensions(-1, 1, 1), "Zone 1", ServiceLevel.Standard);
@@ -68,7 +68,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void LetterWithNoSize_IsAcceptedButAParcelIsNot()
+    public void ValidateWeightLimits_NoSize_AcceptsALetterButNotAParcel()
     {
         // Arrange
         var letter = new ShippingDetails(false, Weight.FromKilograms(0.1m), new Dimensions(0, 0, 0), "Zone 1", ServiceLevel.Standard);
@@ -81,7 +81,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void LineItems_CannotBeChangedWithoutAddLineItem()
+    public void LineItems_NewTransaction_IsAReadOnlyCollection()
     {
         // Act
         var transaction = new Transaction
@@ -98,7 +98,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void DomainEventIdentity_IsStableAcrossReads()
+    public void EventIdAndOccurredOnUtc_ReadTwice_ReturnTheSameValues()
     {
         // Act
         IDomainEvent domainEvent = new StockLowEvent(new BranchCode("B001"), new Sku("SKU-001"), 1);
@@ -109,7 +109,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void FourCharacterDocumentNumber_IsNeverStoredUnmasked()
+    public void FromDocumentNumber_FourCharacterNumber_Throws()
     {
         // Act and assert
         Assert.Throws<ArgumentException>(() =>
@@ -119,14 +119,14 @@ public sealed class DomainEdgeCaseTests
     [Theory]
     [InlineData(5, true)]
     [InlineData(6, false)]
-    public void LowStockRule_UsesItsConfiguredThreshold(int quantity, bool expected)
+    public void IsLow_QuantityAroundTheConfiguredThreshold_ReturnsExpected(int quantity, bool expected)
     {
         // Act and assert
         Assert.Equal(expected, new LowStockRule(5).IsLow(quantity));
     }
 
     [Fact]
-    public void PasswordHasher_VerifiesOnlyTheOriginalPasswordAndSaltsEachHash()
+    public void Hash_SamePasswordTwice_SaltsEachHashAndVerifiesOnlyTheOriginal()
     {
         // Arrange
         var hasher = new Pbkdf2PasswordHasher();
@@ -145,7 +145,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void TransactionTotals_SplitRetailFromServices()
+    public void Totals_RetailAndServiceLines_AreSplit()
     {
         // Arrange
         var transaction = new Transaction
@@ -174,7 +174,7 @@ public sealed class DomainEdgeCaseTests
     }
 
     [Fact]
-    public void ServicesTotal_CountsOnlyTheMoneyOrderFeeAsRevenue()
+    public void ServicesTotal_MoneyOrderLine_CountsOnlyTheFee()
     {
         // Arrange
         var transaction = new Transaction

@@ -38,7 +38,7 @@ public class DomainBehaviourTests
     };
 
     [Fact]
-    public void Branch_RejectsCounterFromAnotherBranch()
+    public void EnsureHasCounter_CounterFromAnotherBranch_Throws()
     {
         // Arrange
         var branch = new Branch
@@ -154,7 +154,7 @@ public class DomainBehaviourTests
     }
 
     [Fact]
-    public void Transaction_CannotAddLinesAfterCompletion()
+    public void AddRetailProduct_TransactionAlreadyCompleted_Throws()
     {
         // Arrange
         var transaction = NewTransaction();
@@ -200,7 +200,7 @@ public class DomainBehaviourTests
     }
 
     [Fact]
-    public void ShippingZone_OnlyOffersAPositiveMultiplier()
+    public void UsableMultiplier_PositiveOrZeroMultiplier_ReturnsItOrThrows()
     {
         // Act and assert
         Assert.Equal(1.5m, new ShippingZone { Id = "Zone 5", Name = "Zone 5", Multiplier = 1.5m }.UsableMultiplier());

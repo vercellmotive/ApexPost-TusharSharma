@@ -9,7 +9,7 @@ namespace ApexPost.IntegrationTests.Offline;
 public class DocumentModelTests
 {
     [Fact]
-    public void ASavedScan_IsAJsonDocumentWithExactlyTheSevenFields()
+    public void Create_PendingScan_StoresAJsonDocumentWithExactlySevenFields()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -32,7 +32,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void ADeliveredScanWithASignature_AddsOnlyTheOptionalSignatureField()
+    public void Create_DeliveredScanWithASignature_AddsOnlyTheSignatureField()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -49,7 +49,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void TheTimeIsStoredAsUtcText_SoOrderingByTextIsOrderingByTime()
+    public void Create_ScanTime_IsStoredAsSortableUtcText()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -67,7 +67,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void ADocumentId_IsScanColonColonAGuid()
+    public void Create_NewScan_UsesScanColonColonGuidAsTheDocumentId()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -82,7 +82,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void MissingNotes_AreStoredAsNull_AndComeBackAsNull()
+    public void Create_ScanWithoutNotes_StoresAndReadsBackNull()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -97,7 +97,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void ADocumentThatIsNotAShipmentScan_IsReportedNotGuessedAt()
+    public void Get_DocumentThatIsNotAScan_ThrowsInvalidData()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -111,7 +111,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void DomainTypes_ReferenceNoCouchbaseTypes()
+    public void DomainTypes_EveryMember_ReferencesNoCouchbaseType()
     {
         // Act
         var domainTypes = typeof(ShipmentScan).Assembly.GetTypes()
@@ -134,7 +134,7 @@ public class DocumentModelTests
     }
 
     [Fact]
-    public void DomainSourceFiles_NeverMentionCouchbase()
+    public void DomainSourceFiles_EveryFile_NeverMentionsCouchbase()
     {
         // Arrange
         var folder = Path.Combine(FindRepositoryRoot(), "ApexPost.Courier.Offline", "Domain");

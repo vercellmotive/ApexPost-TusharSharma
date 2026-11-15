@@ -324,7 +324,7 @@ Each trial sold exactly the available stock, left no stuck transactions and neve
 | 1 | Finished: `Session 1 survived` |
 | 2 | `Msg 1205, Level 13`: "chosen as the deadlock victim" |
 
-`OppositeUpdateOrder_Deadlocks_AndTheVictimIsRetryableAndRolledBack` repeats this against SQL Server. It confirms error 1205, that the victim's update was rolled back, and that EF Core's `SqlServerRetryingExecutionStrategy` would retry that error.
+`ExecuteNonQueryAsync_OppositeUpdateOrder_DeadlocksWithARetryableRolledBackVictim` repeats this against SQL Server. It confirms error 1205, that the victim's update was rolled back, and that EF Core's `SqlServerRetryingExecutionStrategy` would retry that error.
 
 The server's deadlock counter read 2 after the load test below. One forced demo and one run of that test account for both, so the load test itself appears to have caused none. The counter is server-wide, so this is an inference.
 
@@ -347,7 +347,7 @@ The server's deadlock counter read 2 after the load test below. One forced demo 
 
 ## N+1 evidence
 
-Counted from `Microsoft.EntityFrameworkCore.Database.Command` logs in Development, and enforced by the test `ScreenQueries_DoNotIssueOneQueryPerRow`.
+Counted from `Microsoft.EntityFrameworkCore.Database.Command` logs in Development, and enforced by the test `GetBranchTransactionsAsync_TwoHundredRows_DoesNotIssueOneQueryPerRow`.
 
 | Page | Rows shown | Database commands |
 |---|---|---|
@@ -373,7 +373,7 @@ Writes follow the same rule. A sale reads all of its basket's stock in one query
 
 ## Generated SQL
 
-Captured from EF Core with `ToQueryString()`. To refresh it, set `APEXPOST_SQL_CAPTURE_PATH` and run the test `ReadQueries_TranslateToSqlWithoutTracking`.
+Captured from EF Core with `ToQueryString()`. To refresh it, set `APEXPOST_SQL_CAPTURE_PATH` and run the test `ToQueryString_ReadQueries_TranslateWithoutTracking`.
 
 ### Low stock (screen and dashboard)
 

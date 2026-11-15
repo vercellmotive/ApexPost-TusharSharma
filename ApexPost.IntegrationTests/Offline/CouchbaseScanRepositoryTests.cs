@@ -21,7 +21,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Create_KeepsUnicodeQuotesAndExactTime()
+    public void Create_UnicodeQuotesAndExactTime_ReadsBackUnchanged()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -38,7 +38,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Create_RejectsAScanThatIsNotPending()
+    public void Create_ScanThatIsNotPending_ThrowsAndSavesNothing()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -51,7 +51,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Create_RejectsADuplicateId_AndKeepsTheOriginal()
+    public void Create_DuplicateId_ThrowsAndKeepsTheOriginal()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -65,7 +65,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Create_RejectsAnInvalidScan()
+    public void Create_InvalidScan_Throws()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -89,7 +89,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Update_ReplacesEveryField()
+    public void Update_EveryFieldChanged_ReplacesEveryField()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -114,7 +114,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Update_ReturnsFalse_AndDoesNotRecreateAScanThatIsGone()
+    public void Update_ScanThatIsGone_ReturnsFalseAndDoesNotRecreateIt()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -128,7 +128,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void UpdateSyncStatus_ChangesOnlyTheStatus_AndKeepsOtherEdits()
+    public void UpdateSyncStatus_ScanEditedMeanwhile_ChangesOnlyTheStatus()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -161,7 +161,7 @@ public class CouchbaseScanRepositoryTests
     }
 
     [Fact]
-    public void Delete_RemovesTheScan_AndReturnsFalseTheSecondTime()
+    public void Delete_CalledTwice_RemovesTheScanThenReturnsFalse()
     {
         // Arrange
         using var db = new TestCourierDatabase();

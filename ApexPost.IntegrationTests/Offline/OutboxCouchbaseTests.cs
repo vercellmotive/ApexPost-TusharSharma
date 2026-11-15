@@ -34,7 +34,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task AnUploaderThatCannotReachTheServer_LeavesEveryScanPending_AndStopsTheRun()
+    public async Task SyncPendingAsync_ServerUnreachable_LeavesEveryScanPendingAndStops()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -85,7 +85,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task AnUploaderThatThrows_FailsThatScanAndTheRunContinues()
+    public async Task SyncPendingAsync_UploaderThrows_FailsThatScanAndContinues()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -104,7 +104,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task ScansThatAreAlreadySyncedOrFailed_AreNotUploadedAgain()
+    public async Task SyncPendingAsync_SyncedOrFailedScans_AreNotUploadedAgain()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -143,7 +143,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task RunningTheOutboxTwice_UploadsEachScanOnce()
+    public async Task SyncPendingAsync_RunTwice_UploadsEachScanOnce()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -162,7 +162,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task AScanDeletedWhileItUploads_IsSkippedAndDoesNotComeBack()
+    public async Task SyncPendingAsync_ScanDeletedDuringUpload_IsSkippedAndNotRecreated()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -184,7 +184,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task AnEditMadeWhileTheScanUploads_IsKept()
+    public async Task SyncPendingAsync_ScanEditedDuringUpload_KeepsTheEdit()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -206,7 +206,7 @@ public class OutboxCouchbaseTests
     }
 
     [Fact]
-    public async Task Cancelling_StopsTheRun_AndLeavesTheUnfinishedScansPending()
+    public async Task SyncPendingAsync_Cancelled_StopsAndLeavesTheUnfinishedScansPending()
     {
         // Arrange
         using var db = new TestCourierDatabase();

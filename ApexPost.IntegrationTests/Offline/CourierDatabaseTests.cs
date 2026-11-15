@@ -6,7 +6,7 @@ namespace ApexPost.IntegrationTests.Offline;
 public class CourierDatabaseTests
 {
     [Fact]
-    public void Opens_ApexpostCourier_AndUsesTheDefaultCollection()
+    public void Open_NewDatabase_IsApexpostCourierWithTheDefaultCollection()
     {
         // Act
         using var db = new TestCourierDatabase();
@@ -33,7 +33,7 @@ public class CourierDatabaseTests
     }
 
     [Fact]
-    public void Scans_SurviveClosingAndReopening()
+    public void Reopen_AfterSavingScans_KeepsTheScans()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -63,7 +63,7 @@ public class CourierDatabaseTests
     }
 
     [Fact]
-    public void OpeningAgain_KeepsTheSameTwoIndexes()
+    public void Reopen_ExistingDatabase_KeepsTheSameTwoIndexes()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -76,7 +76,7 @@ public class CourierDatabaseTests
     }
 
     [Fact]
-    public void Dispose_RemovesTheChangeListenerAndClosesTheDatabase()
+    public void Dispose_OpenDatabase_RemovesTheListenerAndCloses()
     {
         // Act
         using var db = new TestCourierDatabase();
@@ -96,7 +96,7 @@ public class CourierDatabaseTests
     }
 
     [Fact]
-    public void Dispose_CanBeCalledMoreThanOnce()
+    public void Dispose_CalledTwice_DoesNotThrow()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -111,7 +111,7 @@ public class CourierDatabaseTests
     }
 
     [Fact]
-    public void AfterDispose_TheFolderCanBeOpenedAgainAndNoEventsReachTheOldHandler()
+    public void Dispose_ThenReopenTheSameFolder_OpensAndTheOldHandlerGetsNoEvents()
     {
         // Arrange
         using var db = new TestCourierDatabase();

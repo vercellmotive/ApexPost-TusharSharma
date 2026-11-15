@@ -8,7 +8,7 @@ namespace ApexPost.IntegrationTests.Offline;
 public class HarnessAppTests
 {
     [Fact]
-    public async Task TheMenu_ListsTheSixOptions_AndNamesTheDatabase()
+    public async Task Run_Started_ListsTheSixOptionsAndNamesTheDatabase()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -27,7 +27,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task AddScan_SavesItPending_AndShowsTheCouriersCounts()
+    public async Task AddScan_ValidInput_SavesItPendingAndShowsTheCouriersCounts()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -44,7 +44,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task AddScan_AcceptsTheScanTypeByNameAsWellAsByNumber()
+    public async Task AddScan_ScanTypeByNameOrNumber_IsAccepted()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -57,7 +57,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task FindByTrackingNumber_ShowsItsScansOldestFirst()
+    public async Task FindByTrackingNumber_SeveralScans_ShowsThemOldestFirst()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -78,7 +78,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task FindByTrackingNumber_SaysSoWhenThereAreNoScans()
+    public async Task FindByTrackingNumber_NoScans_SaysSo()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -123,7 +123,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task DeleteScan_RemovesTheScanWhoseIdIsTyped()
+    public async Task DeleteScan_TypedId_RemovesThatScan()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -168,7 +168,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task ABadMenuChoiceABadScanTypeAndABadTrackingNumber_AreReported_AndTheMenuCarriesOn()
+    public async Task Run_BadMenuChoiceScanTypeOrTrackingNumber_ReportsItAndCarriesOn()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -185,7 +185,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task WhenTheInputEndsInTheMiddleOfAScan_TheHarnessStopsCleanlyAndSavesNothing()
+    public async Task AddScan_InputEndsMidScan_StopsCleanlyAndSavesNothing()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -199,7 +199,7 @@ public class HarnessAppTests
     }
 
     [Fact]
-    public async Task TheLivePendingCount_IsPrintedAfterTheListenerFires()
+    public async Task AddScan_ListenerFires_PrintsTheLivePendingCount()
     {
         // Arrange
         using var db = new TestCourierDatabase();
