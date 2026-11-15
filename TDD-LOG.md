@@ -42,8 +42,10 @@ public async Task UploadScansAsync_ScanRecordedAfterShipmentClosed_IsRejectedWit
     var result = await _service.UploadScansAsync("APX-10000001", [late], Make.CourierId);
 
     // Assert
+    Assert.True(result.Succeeded);
     Assert.Equal(0, result.Value.Accepted);
     var rejection = Assert.Single(result.Value.Rejections);
+    Assert.Equal(late.ScanId, rejection.ScanId);
     Assert.Equal($"The shipment was closed as {finalStatus} before this scan was recorded.", rejection.Reason);
     _store.Verify(store => store.AddScansAsync(It.IsAny<IReadOnlyList<TrackingScan>>(), It.IsAny<CancellationToken>()), Times.Never);
 }
@@ -58,7 +60,7 @@ UploadScansAsync_ScanTimeAroundTheClosingTime_AcceptedOnlyUpToTheClose(secondsAf
 UploadScansAsync_ScanTimeAroundTheClosingTime_AcceptedOnlyUpToTheClose(secondsAfterClose: 3600, accepted: False) [FAIL]
 Expected: 0
 Actual:   1
-Failed!  - Failed: 4, Passed: 3, Total: 7
+Failed!  - Failed:     4, Passed:     3, Skipped:     0, Total:     7, Duration: 71 ms - ApexPost.UnitTests.dll (net10.0)
 ```
 
 The three cases that already passed are the ones the rule must not break: an earlier scan, a scan at the exact closing moment, and an open shipment.

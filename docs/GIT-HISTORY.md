@@ -164,7 +164,17 @@ A strict check of the Arrange-Act-Assert layout found 157 tests that did not kee
 | Commit | Date | Message |
 |---|---|---|
 | `e2d9863` | 2026-11-15 | test: give every test exactly one Act and one Assert section |
-| (this file) | 2026-11-15 | docs: record the AAA review and how the conventions are checked |
+| `28e50ea` | 2026-11-15 | docs: record the AAA review and how the conventions are checked |
+
+Merged into `master` through [PR #29](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/29) as `615512f`.
+
+### Week 5 document check (`week5-doc-fixes`)
+
+Checking the documents against the code turned up two code samples that did not match. The naming example in `TESTING-STRATEGY.md` section 7 named a test that does not exist, and the first failing test in `TDD-LOG.md` left out two of the assertions in RED commit `2d72146`. The example now names a real test, and the log's code and output blocks match commits `2d72146` and `24cbdb7` and the saved run in `docs/week5/tdd/1-red.txt`. No test or production code changed.
+
+| Commit | Date | Message |
+|---|---|---|
+| (this file) | 2026-11-15 | docs: make the naming example and the TDD log match the code |
 
 ## Early commit messages
 
