@@ -55,8 +55,11 @@ public sealed class ResilienceTests : IDisposable
         // Arrange
         _harness.Server.Then(status).Then(HttpStatusCode.OK, Shipment);
 
-        // Act and assert
-        Assert.True((await _harness.Client.GetShipmentAsync("APX-10000001")).Succeeded);
+        // Act
+        var result = await _harness.Client.GetShipmentAsync("APX-10000001");
+
+        // Assert
+        Assert.True(result.Succeeded);
         Assert.Equal(2, _harness.Server.Calls);
     }
 
@@ -87,8 +90,11 @@ public sealed class ResilienceTests : IDisposable
         // Arrange
         _harness.Server.ThenThrow(new HttpRequestException("Connection refused")).Then(HttpStatusCode.OK, Shipment);
 
-        // Act and assert
-        Assert.True((await _harness.Client.GetShipmentAsync("APX-10000001")).Succeeded);
+        // Act
+        var result = await _harness.Client.GetShipmentAsync("APX-10000001");
+
+        // Assert
+        Assert.True(result.Succeeded);
         Assert.Contains("after HttpRequestException", _harness.Logs.All);
     }
 
@@ -169,11 +175,7 @@ public sealed class ResilienceTests : IDisposable
         // Assert
         Assert.True(result.Succeeded);
         Assert.Equal(2, _harness.Server.Calls);
-
-        // Act
         var bodies = _harness.Server.Received.Select(request => request.Body).ToList();
-
-        // Assert
         Assert.Equal(bodies[0], bodies[1]);
     }
 
@@ -206,14 +208,8 @@ public sealed class ResilienceTests : IDisposable
     {
         // Arrange
         _harness.Server.Fallback = _ => Task.FromResult(ScriptedServer.Respond(HttpStatusCode.ServiceUnavailable, null));
-
-        // Act
         await _harness.Client.GetShipmentAsync("APX-10000001");
-
-        // Assert
-        Assert.True(_harness.Circuit.IsOpen);
-
-        // Arrange (next step)
+        var openAfterFailures = _harness.Circuit.IsOpen;
         _harness.Server.Fallback = _ => Task.FromResult(ScriptedServer.Respond(HttpStatusCode.OK, Shipment));
         using var bound = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
@@ -228,6 +224,7 @@ public sealed class ResilienceTests : IDisposable
         }
 
         // Assert
+        Assert.True(openAfterFailures);
         Assert.True(result.Succeeded);
         Assert.Equal(CircuitState.Closed, _harness.Circuit.State);
         Assert.Contains("Circuit half-open", _harness.Logs.All);

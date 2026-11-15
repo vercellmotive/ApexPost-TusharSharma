@@ -19,8 +19,11 @@ public sealed class DomainEdgeCaseTests
         // Arrange
         var letter = new ShippingDetails(false, Weight.FromKilograms(0.6m), default, "Zone 1", ServiceLevel.Standard);
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => _pricing.ValidateWeightLimits(letter));
+        // Act
+        Action act = () => _pricing.ValidateWeightLimits(letter);
+
+        // Assert
+        Assert.Throws<DomainValidationException>(act);
     }
 
     [Fact]
@@ -29,8 +32,11 @@ public sealed class DomainEdgeCaseTests
         // Arrange
         var letter = new ShippingDetails(false, Weight.FromKilograms(0.2m), default, "Zone 1", ServiceLevel.Express);
 
-        // Act and assert: completing without an exception is the expected result
-        _pricing.ValidateWeightLimits(letter);
+        // Act
+        var exception = Record.Exception(() => _pricing.ValidateWeightLimits(letter));
+
+        // Assert
+        Assert.Null(exception);
     }
 
     [Fact]
@@ -39,8 +45,11 @@ public sealed class DomainEdgeCaseTests
         // Arrange
         var parcel = new ShippingDetails(true, Weight.FromKilograms(1m), default, "Zone 1", ServiceLevel.Standard);
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => _pricing.ValidateWeightLimits(parcel));
+        // Act
+        Action act = () => _pricing.ValidateWeightLimits(parcel);
+
+        // Assert
+        Assert.Throws<DomainValidationException>(act);
     }
 
     [Theory]
@@ -51,8 +60,11 @@ public sealed class DomainEdgeCaseTests
         // Arrange
         var details = new ShippingDetails(isParcel, Weight.FromKilograms(0m), new Dimensions(1, 1, 1), "Zone 1", ServiceLevel.Standard);
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => _pricing.ValidateWeightLimits(details));
+        // Act
+        Action act = () => _pricing.ValidateWeightLimits(details);
+
+        // Assert
+        Assert.Throws<DomainValidationException>(act);
     }
 
     [Theory]
@@ -63,8 +75,11 @@ public sealed class DomainEdgeCaseTests
         // Arrange
         var details = new ShippingDetails(isParcel, Weight.FromKilograms(1m), new Dimensions(-1, 1, 1), "Zone 1", ServiceLevel.Standard);
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => _pricing.ValidateWeightLimits(details));
+        // Act
+        Action act = () => _pricing.ValidateWeightLimits(details);
+
+        // Assert
+        Assert.Throws<DomainValidationException>(act);
     }
 
     [Fact]
@@ -74,10 +89,13 @@ public sealed class DomainEdgeCaseTests
         var letter = new ShippingDetails(false, Weight.FromKilograms(0.1m), new Dimensions(0, 0, 0), "Zone 1", ServiceLevel.Standard);
         var parcel = letter with { IsParcel = true };
 
-        _pricing.ValidateWeightLimits(letter);
+        // Act
+        var letterError = Record.Exception(() => _pricing.ValidateWeightLimits(letter));
+        var parcelError = Record.Exception(() => _pricing.ValidateWeightLimits(parcel));
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => _pricing.ValidateWeightLimits(parcel));
+        // Assert
+        Assert.Null(letterError);
+        Assert.IsType<DomainValidationException>(parcelError);
     }
 
     [Fact]
@@ -100,20 +118,28 @@ public sealed class DomainEdgeCaseTests
     [Fact]
     public void EventIdAndOccurredOnUtc_ReadTwice_ReturnTheSameValues()
     {
-        // Act
+        // Arrange
         IDomainEvent domainEvent = new StockLowEvent(new BranchCode("B001"), new Sku("SKU-001"), 1);
 
+        // Act
+        var firstId = domainEvent.EventId;
+        var secondId = domainEvent.EventId;
+        var firstTime = domainEvent.OccurredOnUtc;
+        var secondTime = domainEvent.OccurredOnUtc;
+
         // Assert
-        Assert.Equal(domainEvent.EventId, domainEvent.EventId);
-        Assert.Equal(domainEvent.OccurredOnUtc, domainEvent.OccurredOnUtc);
+        Assert.Equal(firstId, secondId);
+        Assert.Equal(firstTime, secondTime);
     }
 
     [Fact]
     public void FromDocumentNumber_FourCharacterNumber_Throws()
     {
-        // Act and assert
-        Assert.Throws<ArgumentException>(() =>
-            IdVerificationDetails.FromDocumentNumber(DocumentType.Passport, "AB12", true));
+        // Act
+        Action act = () => IdVerificationDetails.FromDocumentNumber(DocumentType.Passport, "AB12", true);
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
     }
 
     [Theory]
@@ -121,8 +147,14 @@ public sealed class DomainEdgeCaseTests
     [InlineData(6, false)]
     public void IsLow_QuantityAroundTheConfiguredThreshold_ReturnsExpected(int quantity, bool expected)
     {
-        // Act and assert
-        Assert.Equal(expected, new LowStockRule(5).IsLow(quantity));
+        // Arrange
+        var rule = new LowStockRule(5);
+
+        // Act
+        var isLow = rule.IsLow(quantity);
+
+        // Assert
+        Assert.Equal(expected, isLow);
     }
 
     [Fact]

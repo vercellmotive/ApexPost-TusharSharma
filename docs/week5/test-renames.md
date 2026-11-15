@@ -9,6 +9,16 @@ The second pass renamed tests and nothing else. The only change inside a test bo
 
 In each new name, the first part is what the test exercises. That is usually a method, or an HTTP action for the web tests (for example `PostCounterCreate`). For a test that checks a whole model or layer, it is that subject (for example `Model` or `SourceFiles`). The second part is the situation, and the third is the expected result.
 
+## Renamed during the AAA review
+
+The AAA review that followed, recorded in `TESTING-STRATEGY.md` section 4, renamed three more tests. They had three parts, but the parts were in the wrong order or did not name the method under test.
+
+| File | Old name | New name |
+|---|---|---|
+| `ApexPost.IntegrationTests/Offline/CouchbaseScanRepositoryTests.cs` | `Get_ReturnsNull_ForAnIdThatDoesNotExist` | `Get_UnknownOrBlankId_ReturnsNullOrThrows` |
+| `ApexPost.IntegrationTests/Offline/CouchbaseScanRepositoryTests.cs` | `UpdateSyncStatus_ReturnsFalse_ForAScanThatIsGone` | `UpdateSyncStatus_GoneScanOrUndefinedStatus_ReturnsFalseOrThrows` |
+| `ApexPost.IntegrationTests/CounterPlatform/WebPipelineTests.cs` | `Clerk_IsForbidden_FromVoidAction` | `PostCounterVoid_ByAClerk_IsForbiddenAndAuditedWithoutTheReason` |
+
 
 ## `ApexPost.IntegrationTests/CounterPlatform/ErrorMappingAndOverPostingTests.cs`
 

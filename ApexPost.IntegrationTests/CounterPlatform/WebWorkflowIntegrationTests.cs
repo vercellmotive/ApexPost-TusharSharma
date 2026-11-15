@@ -33,9 +33,13 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
         // Arrange
         var client = CreateClient(_factory);
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.OK, await LoginAsync(client, "alice@apexpost.com", DemoStaff.PasswordFor("ben@apexpost.com")));
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "alice@apexpost.com", DemoStaff.PasswordFor("alice@apexpost.com")));
+        // Act
+        var withBensPassword = await LoginAsync(client, "alice@apexpost.com", DemoStaff.PasswordFor("ben@apexpost.com"));
+        var withOwnPassword = await LoginAsync(client, "alice@apexpost.com", DemoStaff.PasswordFor("alice@apexpost.com"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, withBensPassword);
+        Assert.Equal(HttpStatusCode.Redirect, withOwnPassword);
     }
 
     [Fact]
@@ -43,15 +47,11 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Act
         var staff = _factory.Database.AllStaff();
+        var configuration = _factory.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
 
         // Assert
         Assert.All(staff, person => Assert.StartsWith("PBKDF2-SHA256$", person.PasswordHash));
         Assert.Equal(staff.Count, staff.Select(person => person.PasswordHash).Distinct().Count());
-
-        // Act
-        var configuration = _factory.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
-
-        // Assert
         Assert.Null(configuration["Authentication:DemoPassword"]);
     }
 
@@ -60,11 +60,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "ben@apexpost.com", DemoStaff.PasswordFor("ben@apexpost.com")));
-
-        // Arrange (next step)
+        await SignInAsync(client, "ben@apexpost.com");
         var token = await GetTokenAsync(client, "/Counter");
 
         // Act
@@ -78,11 +74,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-
-        // Act
         var entries = await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
-
-        // Assert
         Assert.Contains(entries, entry =>
             entry.StaffId == "STF002"
             && entry.StatusCode == 403
@@ -94,13 +86,17 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
+        await SignInAsync(client, "cara@apexpost.com");
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "cara@apexpost.com", DemoStaff.PasswordFor("cara@apexpost.com")));
+        // Act
+        var shippingLabel = await client.GetAsync("/Shipping/ShippingLabel");
+        var transactions = await client.GetAsync("/Counter/Transactions");
+        var oldShippingLabelRoute = await client.GetAsync("/Counter/ShippingLabel");
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Shipping/ShippingLabel")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Counter/Transactions")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/Counter/ShippingLabel")).StatusCode);
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, shippingLabel.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, transactions.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, oldShippingLabelRoute.StatusCode);
     }
 
     [Fact]
@@ -108,12 +104,15 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
+        await SignInAsync(client, "grace@apexpost.com");
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "grace@apexpost.com", DemoStaff.PasswordFor("grace@apexpost.com")));
+        // Act
+        var ownBranch = await client.GetAsync("/Reports?branchCode=B003");
+        var otherBranch = await client.GetAsync("/Reports?branchCode=B001");
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Reports?branchCode=B003")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/Reports?branchCode=B001")).StatusCode);
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, ownBranch.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, otherBranch.StatusCode);
     }
 
     [Fact]
@@ -135,12 +134,12 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
+        await SignInAsync(client, "frank@apexpost.com");
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "frank@apexpost.com", DemoStaff.PasswordFor("frank@apexpost.com")));
-
+        // Act
         var html = await (await client.GetAsync("/Reports")).Content.ReadAsStringAsync();
 
+        // Assert
         Assert.Contains("retail", html);
         Assert.DoesNotContain("No paid sales on this date.", html);
     }
@@ -150,16 +149,8 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "dom@apexpost.com", DemoStaff.PasswordFor("dom@apexpost.com")));
-
+        await SignInAsync(client, "dom@apexpost.com");
         var page = await (await client.GetAsync("/Counter/Transactions")).Content.ReadAsStringAsync();
-
-        Assert.Contains("/Counter/Void", page);
-        Assert.Contains("/Counter/Refund", page);
-
-        // Arrange (next step)
         var transactionId = Regex.Match(page, "name=\"transactionId\" value=\"([^\"]+)\"").Groups[1].Value;
 
         // Act
@@ -169,12 +160,12 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
             ["reason"] = "Entered in error",
             ["__RequestVerificationToken"] = FindToken(page)
         }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-
         var dashboard = await (await client.GetAsync("/")).Content.ReadAsStringAsync();
 
+        // Assert
+        Assert.Contains("/Counter/Void", page);
+        Assert.Contains("/Counter/Refund", page);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Contains($"Transaction {transactionId} was voided or refunded", dashboard);
     }
 
@@ -183,14 +174,11 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory, "127.0.0.60");
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "olive@apexpost.com", DemoStaff.PasswordFor("olive@apexpost.com")));
-
-        // Arrange (next step)
-        var branchToken = await GetTokenAsync(client, "/Branches/Create");
+        await SignInAsync(client, "olive@apexpost.com");
 
         // Act
+        // The administrator creates a branch, closes it, then adds a product.
+        var branchToken = await GetTokenAsync(client, "/Branches/Create");
         var createBranch = await client.PostAsync("/Branches/Create", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["Code"] = "B090",
@@ -202,34 +190,13 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
             ["CounterTerminals"] = "C01, C02",
             ["__RequestVerificationToken"] = branchToken
         }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, createBranch.StatusCode);
-
-        // Arrange (next step)
         var closeToken = await GetTokenAsync(client, "/Branches");
-
-        // Act
         var close = await client.PostAsync("/Branches/SetStatus/B090", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["isActive"] = "false",
             ["__RequestVerificationToken"] = closeToken
         }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, close.StatusCode);
-
-        // Act
-        var branch = _factory.Database.BranchByCode("B090");
-
-        // Assert
-        Assert.Equal(["C01", "C02"], branch!.CounterTerminals);
-        Assert.False(branch.IsActive);
-
-        // Arrange (next step)
         var productToken = await GetTokenAsync(client, "/Products/Create");
-
-        // Act
         var createProduct = await client.PostAsync("/Products/Create", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["Sku"] = "SKU-900",
@@ -239,19 +206,18 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
             ["TaxCategory"] = "StandardGst",
             ["__RequestVerificationToken"] = productToken
         }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, createProduct.StatusCode);
-
         var catalogue = await (await client.GetAsync("/Catalog")).Content.ReadAsStringAsync();
 
+        // Assert
+        Assert.Equal(HttpStatusCode.Redirect, createBranch.StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, close.StatusCode);
+        var branch = _factory.Database.BranchByCode("B090");
+        Assert.Equal(["C01", "C02"], branch!.CounterTerminals);
+        Assert.False(branch.IsActive);
+        Assert.Equal(HttpStatusCode.Redirect, createProduct.StatusCode);
         Assert.Contains("Test Envelope", catalogue);
         Assert.Equal(0, _factory.Database.StockOf("B090", "SKU-900"));
-
-        // Act
         var audit = await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
-
-        // Assert
         Assert.Contains(audit, entry => entry.Parameters.Contains("\"businessAction\":\"ProductCreate\"", StringComparison.Ordinal));
     }
 
@@ -262,11 +228,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
         using var factory = new OverridingFactory(services =>
             services.AddSingleton<IAuditStore, ThrowingAuditStore>());
         var client = CreateClient(factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "hugo@apexpost.com", DemoStaff.PasswordFor("hugo@apexpost.com")));
-
-        // Arrange (next step)
+        await SignInAsync(client, "hugo@apexpost.com");
         var token = await GetTokenAsync(client, "/Catalog");
 
         // Act
@@ -291,11 +253,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
             services => services.AddScoped(_ => DispatchProxy.Create<IScreenQueries, ThrowingProxy>()),
             logs);
         var client = CreateClient(factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "kara@apexpost.com", DemoStaff.PasswordFor("kara@apexpost.com")));
-
-        // Arrange (next step)
+        await SignInAsync(client, "kara@apexpost.com");
         client.DefaultRequestHeaders.Add("X-Correlation-Id", "failed-request-1");
 
         // Act
@@ -305,9 +263,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal("failed-request-1", Assert.Single(response.Headers.GetValues("X-Correlation-Id")));
-
         var body = await response.Content.ReadAsStringAsync();
-
         Assert.Contains("\"traceId\":\"failed-request-1\"", body);
         Assert.DoesNotContain("Simulated catalogue failure", body);
         Assert.Contains(logs.Messages, message =>
@@ -319,11 +275,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "ella@apexpost.com", DemoStaff.PasswordFor("ella@apexpost.com")));
-
-        // Arrange (next step)
+        await SignInAsync(client, "ella@apexpost.com");
         var token = await GetTokenAsync(client, "/Services/MoneyOrder");
 
         // Act
@@ -337,9 +289,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
         var html = await response.Content.ReadAsStringAsync();
-
         Assert.Contains("The Sender field is required.", html);
         Assert.Matches("<option[^>]*value=\"C[0-9]+\"", html);
     }
@@ -349,11 +299,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "hugo@apexpost.com", DemoStaff.PasswordFor("hugo@apexpost.com")));
-
-        // Arrange (next step)
+        await SignInAsync(client, "hugo@apexpost.com");
         var token = await GetTokenAsync(client, "/Catalog");
 
         // Act
@@ -374,11 +320,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     {
         // Arrange
         var client = CreateClient(_factory);
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, await LoginAsync(client, "noah@apexpost.com", DemoStaff.PasswordFor("noah@apexpost.com")));
-
-        // Arrange (next step)
+        await SignInAsync(client, "noah@apexpost.com");
         var token = await GetTokenAsync(client, "/Services/IdentityVerification");
 
         // Act
@@ -389,19 +331,13 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
             ["DocumentNumber"] = "A123456789",
             ["__RequestVerificationToken"] = token
         }));
+        var page = await (await client.GetAsync("/Services/IdentityVerification")).Content.ReadAsStringAsync();
 
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-
-        var page = await (await client.GetAsync("/Services/IdentityVerification")).Content.ReadAsStringAsync();
-
         Assert.Contains("******6789", page);
         Assert.DoesNotContain("A123456789", page);
-
-        // Act
         var audit = await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
-
-        // Assert
         var entry = Assert.Single(audit, item => item.Action == "IdentityVerification" && item.StaffId == "STF014");
         Assert.DoesNotContain("A123456789", entry.Parameters);
     }
@@ -454,6 +390,17 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
             ["__RequestVerificationToken"] = token
         }));
         return response.StatusCode;
+    }
+
+    // Signs in during Arrange. A failed sign-in means the setup is broken, not the behaviour under test, so it throws
+    // instead of asserting.
+    private static async Task SignInAsync(HttpClient client, string email)
+    {
+        var status = await LoginAsync(client, email, DemoStaff.PasswordFor(email));
+        if (status != HttpStatusCode.Redirect)
+        {
+            throw new InvalidOperationException($"Signing in as {email} returned {status}, not a redirect.");
+        }
     }
 
     private static async Task<string> GetTokenAsync(HttpClient client, string path) =>

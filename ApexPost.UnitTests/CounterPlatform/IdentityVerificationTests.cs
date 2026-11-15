@@ -34,9 +34,11 @@ public sealed class IdentityVerificationTests
     [Fact]
     public async Task Verify_InvalidCharacters_IsRejected()
     {
-        // Act and assert
-        await Assert.ThrowsAsync<ApexPost.Domain.Common.DomainValidationException>(() =>
-            _verification.VerifyAsync(DocumentType.Passport, "AB-123456"));
+        // Act
+        Func<Task> act = () => _verification.VerifyAsync(DocumentType.Passport, "AB-123456");
+
+        // Assert
+        await Assert.ThrowsAsync<ApexPost.Domain.Common.DomainValidationException>(act);
     }
 
     [Fact]
@@ -45,11 +47,12 @@ public sealed class IdentityVerificationTests
         // Arrange
         using var cancellation = new CancellationTokenSource();
 
-        // Act
         await cancellation.CancelAsync();
 
+        // Act
+        Func<Task> act = () => _verification.VerifyAsync(DocumentType.Passport, "A123456789", cancellation.Token);
+
         // Assert
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            _verification.VerifyAsync(DocumentType.Passport, "A123456789", cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(act);
     }
 }

@@ -51,10 +51,13 @@ public class DomainBehaviourTests
             CounterTerminals = ["C01"]
         };
 
-        branch.EnsureHasCounter("C01");
+        // Act
+        var ownCounter = Record.Exception(() => branch.EnsureHasCounter("C01"));
+        var otherCounter = Record.Exception(() => branch.EnsureHasCounter("C99"));
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => branch.EnsureHasCounter("C99"));
+        // Assert
+        Assert.Null(ownCounter);
+        Assert.IsType<DomainValidationException>(otherCounter);
     }
 
     [Theory]
@@ -161,8 +164,11 @@ public class DomainBehaviourTests
         transaction.AddRetailProduct(NewProduct(), 1);
         transaction.Complete("Cash", new Money(1000m));
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => transaction.AddRetailProduct(NewProduct(), 1));
+        // Act
+        Action act = () => transaction.AddRetailProduct(NewProduct(), 1);
+
+        // Assert
+        Assert.Throws<DomainValidationException>(act);
     }
 
     [Fact]
@@ -184,26 +190,42 @@ public class DomainBehaviourTests
     [InlineData("Tape", "Packaging", 1, (TaxCategory)99)]
     public void Product_Create_RejectsInvalidInput(string name, string category, int price, TaxCategory tax)
     {
-        // Act and assert
-        Assert.Throws<DomainValidationException>(() => Product.Create(new Sku("SKU-001"), name, category, price, tax));
+        // Act
+        Action act = () => Product.Create(new Sku("SKU-001"), name, category, price, tax);
+
+        // Assert
+        Assert.Throws<DomainValidationException>(act);
     }
 
     [Fact]
     public void Product_WithAnUnsupportedCategory_CannotBeSold()
     {
         // Arrange
-        var product = new Product { Id = new Sku("SKU-001"), Name = "Old", Category = "Retired", UnitPrice = new Money(1m), TaxCategory = TaxCategory.Exempt };
+        var retired = new Product { Id = new Sku("SKU-001"), Name = "Old", Category = "Retired", UnitPrice = new Money(1m), TaxCategory = TaxCategory.Exempt };
+        var current = Product.Create(new Sku("SKU-002"), "Tape", ProductCategories.Packaging, 1m, TaxCategory.Exempt);
 
-        // Act and assert
-        Assert.Throws<DomainValidationException>(product.EnsureSellable);
-        Product.Create(new Sku("SKU-002"), "Tape", ProductCategories.Packaging, 1m, TaxCategory.Exempt).EnsureSellable();
+        // Act
+        var retiredError = Record.Exception(retired.EnsureSellable);
+        var currentError = Record.Exception(current.EnsureSellable);
+
+        // Assert
+        Assert.IsType<DomainValidationException>(retiredError);
+        Assert.Null(currentError);
     }
 
     [Fact]
     public void UsableMultiplier_PositiveOrZeroMultiplier_ReturnsItOrThrows()
     {
-        // Act and assert
-        Assert.Equal(1.5m, new ShippingZone { Id = "Zone 5", Name = "Zone 5", Multiplier = 1.5m }.UsableMultiplier());
-        Assert.Throws<DomainValidationException>(() => new ShippingZone { Id = "Zone 0", Name = "Zone 0", Multiplier = 0m }.UsableMultiplier());
+        // Arrange
+        var zoneFive = new ShippingZone { Id = "Zone 5", Name = "Zone 5", Multiplier = 1.5m };
+        var zoneZero = new ShippingZone { Id = "Zone 0", Name = "Zone 0", Multiplier = 0m };
+
+        // Act
+        var multiplier = zoneFive.UsableMultiplier();
+        Action zeroMultiplier = () => zoneZero.UsableMultiplier();
+
+        // Assert
+        Assert.Equal(1.5m, multiplier);
+        Assert.Throws<DomainValidationException>(zeroMultiplier);
     }
 }

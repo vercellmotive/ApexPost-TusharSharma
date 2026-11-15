@@ -43,11 +43,11 @@ public sealed class ContractTests : IDisposable
         // Arrange
         var client = _development.CreateClient();
 
-        // Act and assert
+        // Act
         var v1 = JsonNode.Parse(await client.GetStringAsync("/openapi/v1.json"))!;
-
         var v2 = JsonNode.Parse(await client.GetStringAsync("/openapi/v2.json"))!;
 
+        // Assert
         Assert.Equal("ApexPost Logistics API", (string?)v1["info"]!["title"]);
         Assert.Equal("v2", (string?)v2["info"]!["version"]);
         Assert.EndsWith(".example", (string?)v2["info"]!["contact"]!["email"]);
@@ -62,9 +62,13 @@ public sealed class ContractTests : IDisposable
     [Fact]
     public async Task OpenApiOperations_Every_DeclaresErrorResponsesAndTag()
     {
-        // Act and assert
-        var v2 = JsonNode.Parse(await _development.CreateClient().GetStringAsync("/openapi/v2.json"))!;
+        // Arrange
+        var client = _development.CreateClient();
 
+        // Act
+        var v2 = JsonNode.Parse(await client.GetStringAsync("/openapi/v2.json"))!;
+
+        // Assert
         foreach (var operation in Operations(v2))
         {
             var codes = operation["responses"]!.AsObject().Select(response => response.Key).ToList();
@@ -79,20 +83,17 @@ public sealed class ContractTests : IDisposable
     [Fact]
     public async Task OpenApiV2_SecuritySchemes_DeclaresAndUsesBearerAndApiKey()
     {
-        // Act and assert
-        var v2 = JsonNode.Parse(await _development.CreateClient().GetStringAsync("/openapi/v2.json"))!;
+        // Arrange
+        var client = _development.CreateClient();
 
         // Act
-        var schemes = v2["components"]!["securitySchemes"]!;
+        var v2 = JsonNode.Parse(await client.GetStringAsync("/openapi/v2.json"))!;
 
         // Assert
+        var schemes = v2["components"]!["securitySchemes"]!;
         Assert.Equal("bearer", (string?)schemes["Bearer"]!["scheme"]);
         Assert.Equal("X-Api-Key", (string?)schemes["ApiKey"]!["name"]);
-
-        // Act
         var partner = v2["paths"]!["/api/v2/partner/shipments/{trackingNumber}"]!["get"]!;
-
-        // Assert
         Assert.NotNull(partner["security"]![0]!["ApiKey"]);
         Assert.NotNull(v2["paths"]!["/api/v2/shipments"]!["get"]!["security"]![0]!["Bearer"]);
     }
@@ -106,9 +107,13 @@ public sealed class ContractTests : IDisposable
         // Arrange
         using var production = new ApiFactory("Production");
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.OK, (await _development.CreateClient().GetAsync(path)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await production.CreateClient().GetAsync(path)).StatusCode);
+        // Act
+        var inDevelopment = await _development.CreateClient().GetAsync(path);
+        var inProduction = await production.CreateClient().GetAsync(path);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, inDevelopment.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, inProduction.StatusCode);
     }
 
     private static IEnumerable<JsonNode> Operations(JsonNode document) =>

@@ -14,9 +14,11 @@ public sealed class CourierTrackingTests
             TimeSpan.FromMilliseconds(5),
             TimeSpan.FromMilliseconds(100));
 
-        // Act and assert
-        await Assert.ThrowsAsync<CourierTrackingTimeoutException>(() =>
-            tracking.GetStatusAsync("APX-001"));
+        // Act
+        Func<Task> act = () => tracking.GetStatusAsync("APX-001");
+
+        // Assert
+        await Assert.ThrowsAsync<CourierTrackingTimeoutException>(act);
     }
 
     [Fact]
@@ -28,12 +30,13 @@ public sealed class CourierTrackingTests
             TimeSpan.FromSeconds(2));
         using var cancellation = new CancellationTokenSource();
 
-        // Act
         await cancellation.CancelAsync();
 
+        // Act
+        Func<Task> act = () => tracking.GetStatusAsync("APX-001", cancellation.Token);
+
         // Assert
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            tracking.GetStatusAsync("APX-001", cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(act);
     }
 
     [Fact]

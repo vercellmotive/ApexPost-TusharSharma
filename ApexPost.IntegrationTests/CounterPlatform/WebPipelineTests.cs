@@ -101,7 +101,13 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
         });
         client.DefaultRequestHeaders.Add("X-Api-Key", "isolated-rate-limit-test-key");
         client.DefaultRequestHeaders.Add("X-Forwarded-For", "127.0.0.50");
-
+        using var secondPartner = rateLimitFactory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost")
+        });
+        secondPartner.DefaultRequestHeaders.Add("X-Api-Key", "second-partner-test-key");
+        secondPartner.DefaultRequestHeaders.Add("X-Forwarded-For", "127.0.0.50");
         var statuses = new List<HttpStatusCode>();
 
         // Act
@@ -111,18 +117,12 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
             statuses.Add(response.StatusCode);
         }
 
+        // The second partner has its own budget, so the first partner's 429s do not affect it.
+        using var secondPartnerResponse = await secondPartner.GetAsync("/integration/parcel-status");
+
         // Assert
         Assert.Contains(HttpStatusCode.TooManyRequests, statuses);
         Assert.Contains(HttpStatusCode.OK, statuses);
-
-        // Arrange (next step)
-        client.DefaultRequestHeaders.Remove("X-Api-Key");
-        client.DefaultRequestHeaders.Add("X-Api-Key", "second-partner-test-key");
-
-        // Act
-        using var secondPartnerResponse = await client.GetAsync("/integration/parcel-status");
-
-        // Assert
         Assert.Equal(HttpStatusCode.OK, secondPartnerResponse.StatusCode);
     }
 
@@ -169,56 +169,12 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Clerk_IsForbidden_FromVoidAction()
+    public async Task PostCounterVoid_ByAClerk_IsForbiddenAndAuditedWithoutTheReason()
     {
         // Arrange
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false,
-            BaseAddress = new Uri("https://localhost")
-        });
-        client.DefaultRequestHeaders.Add("X-Forwarded-For", "127.0.0.22");
-
-        // Act
-        var loginPage = await client.GetAsync("/Account/Login");
-
-        // Assert
-        var loginHtml = await loginPage.Content.ReadAsStringAsync();
-
-        // Act
-        var tokenMatch = FindAntiforgeryToken(loginHtml);
-
-        // Assert
-        Assert.True(tokenMatch.Success, $"Login page did not contain an antiforgery token. Status: {loginPage.StatusCode}; body: {loginHtml}");
-
-        // Act
-        var loginResponse = await client.PostAsync("/Account/Login", new FormUrlEncodedContent(new[]
-        {
-            new KeyValuePair<string, string>("Email", "ben@apexpost.com"),
-            new KeyValuePair<string, string>("Password", DemoStaff.PasswordFor("ben@apexpost.com")),
-            new KeyValuePair<string, string>("ReturnUrl", "/"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", tokenMatch.Groups[1].Value)
-        }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, loginResponse.StatusCode);
-        Assert.True(loginResponse.Headers.Contains("Set-Cookie"), $"Login response did not issue cookies: {string.Join("; ", loginResponse.Headers.Select(header => $"{header.Key}={string.Join(",", header.Value)}"))}");
-
-        // Act
+        var client = await CreateAuthenticatedClientAsync("ben@apexpost.com", "127.0.0.22");
         var counterPage = await client.GetAsync("/Counter");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, counterPage.StatusCode);
-
-        var counterHtml = await counterPage.Content.ReadAsStringAsync();
-
-        // Act
-        var voidToken = FindAntiforgeryToken(counterHtml);
-
-        // Assert
-        Assert.True(voidToken.Success);
-
-        // Arrange (next step)
+        var voidToken = TokenFrom(await counterPage.Content.ReadAsStringAsync());
         var transactionId = Guid.NewGuid();
 
         // Act
@@ -226,19 +182,13 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
         {
             new KeyValuePair<string, string>("transactionId", transactionId.ToString()),
             new KeyValuePair<string, string>("reason", "Customer requested cancellation"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", voidToken.Groups[1].Value)
+            new KeyValuePair<string, string>("__RequestVerificationToken", voidToken)
         }));
 
         // Assert
+        Assert.Equal(HttpStatusCode.OK, counterPage.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-
-        // Arrange (next step)
-        var auditStore = _factory.Services.GetRequiredService<IAuditStore>();
-
-        // Act
-        var entries = await auditStore.GetAllAsync();
-
-        // Assert
+        var entries = await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
         var voidEntry = Assert.Single(entries, entry =>
             entry.Controller == "CounterController"
             && entry.Action == "Void"
@@ -267,62 +217,25 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     public async Task BranchViews_SignedIn_RenderAndRestrictTheAuditReport()
     {
         // Arrange
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false,
-            BaseAddress = new Uri("https://localhost")
-        });
-        client.DefaultRequestHeaders.Add("X-Forwarded-For", "127.0.0.21");
+        var client = await CreateAuthenticatedClientAsync("alice@apexpost.com", "127.0.0.21");
+        string[] branchViews = ["/Catalog", "/Counter", "/Reports", "/Shipping/ShippingLabel"];
 
         // Act
-        var loginPage = await client.GetAsync("/Account/Login");
-
-        // Assert
-        var loginHtml = await loginPage.Content.ReadAsStringAsync();
-
-        // Act
-        var token = FindAntiforgeryToken(loginHtml);
-
-        // Assert
-        Assert.True(token.Success);
-
-        // Act
-        var login = await client.PostAsync("/Account/Login", new FormUrlEncodedContent(new[]
+        var views = new Dictionary<string, HttpResponseMessage>();
+        foreach (var path in branchViews)
         {
-            new KeyValuePair<string, string>("Email", "alice@apexpost.com"),
-            new KeyValuePair<string, string>("Password", DemoStaff.PasswordFor("alice@apexpost.com")),
-            new KeyValuePair<string, string>("ReturnUrl", "/"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", token.Groups[1].Value)
-        }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
-
-        foreach (var path in new[] { "/Catalog", "/Counter", "/Reports", "/Shipping/ShippingLabel" })
-        {
-            var response = await client.GetAsync(path);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            if (path == "/Reports")
-            {
-                var reportsHtml = await response.Content.ReadAsStringAsync();
-                Assert.Contains("B001", reportsHtml);
-                Assert.DoesNotContain("B002", reportsHtml);
-            }
+            views[path] = await client.GetAsync(path);
         }
 
-        // Act
         var auditorPage = await client.GetAsync("/Reports/Audit");
 
         // Assert
+        Assert.All(views.Values, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        var reportsHtml = await views["/Reports"].Content.ReadAsStringAsync();
+        Assert.Contains("B001", reportsHtml);
+        Assert.DoesNotContain("B002", reportsHtml);
         Assert.Equal(HttpStatusCode.Forbidden, auditorPage.StatusCode);
-
-        // Arrange (next step)
-        var auditStore = _factory.Services.GetRequiredService<IAuditStore>();
-
-        // Act
-        var auditEntries = await auditStore.GetAllAsync();
-
-        // Assert
+        var auditEntries = await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
         Assert.DoesNotContain(auditEntries, entry => entry.Action == "Login");
         Assert.DoesNotContain(auditEntries, entry => entry.Action == "Index");
     }
@@ -331,42 +244,11 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     public async Task PostCounterCreate_HighValueMoneyOrderFails_DoesNotConsumeStock()
     {
         // Arrange
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false,
-            BaseAddress = new Uri("https://localhost")
-        });
-        client.DefaultRequestHeaders.Add("X-Forwarded-For", TestClientAddress.For(nameof(PostCounterCreate_HighValueMoneyOrderFails_DoesNotConsumeStock)));
-
-        // Act
-        var loginPage = await client.GetAsync("/Account/Login");
-
-        // Assert
-        var token = FindAntiforgeryToken(await loginPage.Content.ReadAsStringAsync());
-
-        Assert.True(token.Success);
-
-        // Act
-        var login = await client.PostAsync("/Account/Login", new FormUrlEncodedContent(new[]
-        {
-            new KeyValuePair<string, string>("Email", "alice@apexpost.com"),
-            new KeyValuePair<string, string>("Password", DemoStaff.PasswordFor("alice@apexpost.com")),
-            new KeyValuePair<string, string>("ReturnUrl", "/"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", token.Groups[1].Success ? token.Groups[1].Value : token.Groups[2].Value)
-        }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
-
-        // Act
+        var client = await CreateAuthenticatedClientAsync(
+            "alice@apexpost.com",
+            TestClientAddress.For(nameof(PostCounterCreate_HighValueMoneyOrderFails_DoesNotConsumeStock)));
         var counterPage = await client.GetAsync("/Counter");
-
-        // Assert
-        var counterToken = FindAntiforgeryToken(await counterPage.Content.ReadAsStringAsync());
-
-        Assert.True(counterToken.Success);
-
-        // Arrange (next step)
+        var counterToken = TokenFrom(await counterPage.Content.ReadAsStringAsync());
         var stockBefore = _factory.Database.StockOf("B001", "SKU-001");
 
         // Act
@@ -382,7 +264,7 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
                 new KeyValuePair<string, string>("DocumentType", "Passport"),
                 new KeyValuePair<string, string>("DocumentNumber", "AB123"),
                 new KeyValuePair<string, string>("PaymentMethod", "Cash"),
-                new KeyValuePair<string, string>("__RequestVerificationToken", counterToken.Groups[1].Success ? counterToken.Groups[1].Value : counterToken.Groups[2].Value)
+                new KeyValuePair<string, string>("__RequestVerificationToken", counterToken)
             }));
 
         // Assert
@@ -396,26 +278,16 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     {
         // Arrange
         var auditor = await CreateAuthenticatedClientAsync("frank@apexpost.com");
-
-        // Act
-        var auditReport = await auditor.GetAsync("/Reports/Audit");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, auditReport.StatusCode);
-
-        // Arrange (next step)
         var administrator = await CreateAuthenticatedClientAsync("olive@apexpost.com");
 
         // Act
+        var auditReport = await auditor.GetAsync("/Reports/Audit");
         var staffPage = await administrator.GetAsync("/Staff");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, staffPage.StatusCode);
-
-        // Act
         var createStaffPage = await administrator.GetAsync("/Staff/Create");
 
         // Assert
+        Assert.Equal(HttpStatusCode.OK, auditReport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, staffPage.StatusCode);
         Assert.Equal(HttpStatusCode.OK, createStaffPage.StatusCode);
     }
 
@@ -424,16 +296,8 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     {
         // Arrange
         var administrator = await CreateAuthenticatedClientAsync("olive@apexpost.com", "127.0.0.40");
-
-        // Act
         var formPage = await administrator.GetAsync("/Staff/Create");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, formPage.StatusCode);
-
-        var token = FindAntiforgeryToken(await formPage.Content.ReadAsStringAsync());
-
-        Assert.True(token.Success);
+        var token = TokenFrom(await formPage.Content.ReadAsStringAsync());
 
         // Act
         var response = await administrator.PostAsync("/Staff/Create", new FormUrlEncodedContent(new[]
@@ -443,10 +307,11 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
             new KeyValuePair<string, string>("Role", "CounterClerk"),
             new KeyValuePair<string, string>("HomeBranchCode", "B001"),
             new KeyValuePair<string, string>("Password", "A-long-enough-password"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", token.Groups[1].Success ? token.Groups[1].Value : token.Groups[2].Value)
+            new KeyValuePair<string, string>("__RequestVerificationToken", token)
         }));
 
         // Assert
+        Assert.Equal(HttpStatusCode.OK, formPage.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("A staff member with this email already exists.", await response.Content.ReadAsStringAsync());
     }
@@ -456,18 +321,8 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
     {
         // Arrange
         var client = await CreateAuthenticatedClientAsync("alice@apexpost.com", "127.0.0.41");
-
-        // Act
         var catalog = await client.GetAsync("/Catalog");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
-
-        var token = FindAntiforgeryToken(await catalog.Content.ReadAsStringAsync());
-
-        Assert.True(token.Success);
-
-        // Arrange (next step)
+        var token = TokenFrom(await catalog.Content.ReadAsStringAsync());
         var before = _factory.Database.StockOf("B001", "SKU-001");
 
         // Act
@@ -476,24 +331,18 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
             new KeyValuePair<string, string>("productSku", "SKU-001"),
             new KeyValuePair<string, string>("quantityDelta", "2"),
             new KeyValuePair<string, string>("reasonCode", "Replenishment"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", token.Groups[1].Success ? token.Groups[1].Value : token.Groups[2].Value)
+            new KeyValuePair<string, string>("__RequestVerificationToken", token)
         }));
 
         // Assert
+        Assert.Equal(HttpStatusCode.OK, catalog.StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(before + 2, _factory.Database.StockOf("B001", "SKU-001"));
-
-        // Arrange (next step)
-        var auditStore = _factory.Services.GetRequiredService<IAuditStore>();
-
-        // Act
-        var auditEntry = (await auditStore.GetAllAsync()).Last(entry =>
+        var auditEntry = (await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync()).Last(entry =>
             entry.Controller == "StockController"
             && entry.Action == "Adjust"
             && entry.StaffId == "STF001"
             && entry.Parameters.Contains("SKU-001", StringComparison.Ordinal));
-
-        // Assert
         Assert.Contains("\"quantityDelta\":\"2\"", auditEntry.Parameters);
         Assert.Contains("\"reasonCode\":\"Replenishment\"", auditEntry.Parameters);
     }
@@ -504,22 +353,9 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
         // Arrange
         var client = await CreateAuthenticatedClientAsync("alice@apexpost.com", "127.0.0.41");
         var auditStore = _factory.Services.GetRequiredService<IAuditStore>();
-
-        // Act
         var initialQuantity = _factory.Database.StockOf("B001", "SKU-001");
-
-        // Assert
-        Assert.True(initialQuantity > 0);
-
-        // Act
         var counterPage = await client.GetAsync("/Counter");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, counterPage.StatusCode);
-
-        var token = FindAntiforgeryToken(await counterPage.Content.ReadAsStringAsync());
-
-        Assert.True(token.Success);
+        var token = TokenFrom(await counterPage.Content.ReadAsStringAsync());
 
         // Act
         var sale = await client.PostAsync("/Counter/Create", new FormUrlEncodedContent(new[]
@@ -528,25 +364,22 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
             new KeyValuePair<string, string>("RetailItems[0].ProductSku", "SKU-001"),
             new KeyValuePair<string, string>("RetailItems[0].Quantity", "1"),
             new KeyValuePair<string, string>("PaymentMethod", "Cash"),
-            new KeyValuePair<string, string>("__RequestVerificationToken", token.Groups[1].Success ? token.Groups[1].Value : token.Groups[2].Value)
+            new KeyValuePair<string, string>("__RequestVerificationToken", token)
         }));
 
         // Assert
+        Assert.True(initialQuantity > 0);
+        Assert.Equal(HttpStatusCode.OK, counterPage.StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, sale.StatusCode);
         var correlationId = Assert.Single(sale.Headers.GetValues("X-Correlation-Id"));
         Assert.Equal(initialQuantity - 1, _factory.Database.StockOf("B001", "SKU-001"));
-
-        // Act
         var saleAuditEntries = (await auditStore.GetAllAsync()).Where(entry =>
             entry.Controller == "CounterController"
             && entry.Action == "Create"
             && entry.StaffId == "STF001"
             && entry.StatusCode == StatusCodes.Status302Found
             && entry.CorrelationId == correlationId).ToList();
-
-        // Assert
         var saleAudit = Assert.Single(saleAuditEntries);
-
         using var parameters = System.Text.Json.JsonDocument.Parse(saleAudit.Parameters);
 
         var transactionId = Guid.Parse(parameters.RootElement.GetProperty("transactionId").GetString()!);
@@ -564,7 +397,11 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
         client.DefaultRequestHeaders.Add("X-Forwarded-For", clientIp);
         var loginPage = await client.GetAsync("/Account/Login");
         var token = FindAntiforgeryToken(await loginPage.Content.ReadAsStringAsync());
-        Assert.True(token.Success);
+        if (!token.Success)
+        {
+            throw new InvalidOperationException("The sign-in page has no antiforgery token.");
+        }
+
         var tokenValue = token.Groups[1].Success ? token.Groups[1].Value : token.Groups[2].Value;
         var login = await client.PostAsync("/Account/Login", new FormUrlEncodedContent(new[]
         {
@@ -573,8 +410,25 @@ public class WebPipelineTests : IClassFixture<ApexPostWebApplicationFactory>
             new KeyValuePair<string, string>("ReturnUrl", "/"),
             new KeyValuePair<string, string>("__RequestVerificationToken", tokenValue)
         }));
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        if (login.StatusCode != HttpStatusCode.Redirect)
+        {
+            throw new InvalidOperationException($"Signing in as {email} returned {login.StatusCode}, not a redirect.");
+        }
+
         return client;
+    }
+
+    // Reads the antiforgery token a form needs. A page without one means the setup is broken, so it throws instead of
+    // asserting.
+    private static string TokenFrom(string html)
+    {
+        var token = FindAntiforgeryToken(html);
+        if (!token.Success)
+        {
+            throw new InvalidOperationException("The page has no antiforgery token.");
+        }
+
+        return token.Groups[1].Success ? token.Groups[1].Value : token.Groups[2].Value;
     }
 
     private static System.Text.RegularExpressions.Match FindAntiforgeryToken(string html) =>

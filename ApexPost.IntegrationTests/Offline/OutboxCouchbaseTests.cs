@@ -14,18 +14,17 @@ public class OutboxCouchbaseTests
         var uploader = new FakeShipmentUploader();
         var outbox = new OutboxService(db.Repository, uploader);
         var first = db.Repository.Create(Scans.Make("APX-1"));
-
-        // Act
         var second = db.Repository.Create(Scans.Make("APX-2"));
-
-        // Assert
-        Assert.All(db.Repository.GetAll(), scan => Assert.Equal(SyncStatus.Pending, scan.SyncStatus));
-        Assert.Empty(uploader.Attempts);
+        var statusesBeforeRun = db.Repository.GetAll().Select(scan => scan.SyncStatus).ToList();
+        var attemptsBeforeRun = uploader.Attempts.Count;
 
         // Act
         var result = await outbox.SyncPendingAsync();
 
         // Assert
+        Assert.All(statusesBeforeRun, status => Assert.Equal(SyncStatus.Pending, status));
+        Assert.Equal(2, statusesBeforeRun.Count);
+        Assert.Equal(0, attemptsBeforeRun);
         Assert.Equal(2, result.Synced);
         Assert.Equal(0, result.Failed);
         Assert.Equal(SyncStatus.Synced, db.Repository.Get(first.Id)!.SyncStatus);
@@ -220,9 +219,11 @@ public class OutboxCouchbaseTests
         db.Repository.Create(Scans.Make("APX-1", at: Scans.Noon));
         db.Repository.Create(Scans.Make("APX-2", at: Scans.Noon.AddMinutes(1)));
 
-        // Act and assert
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => outbox.SyncPendingAsync(cancellation.Token));
+        // Act
+        var exception = await Record.ExceptionAsync(() => outbox.SyncPendingAsync(cancellation.Token));
 
+        // Assert
+        Assert.IsAssignableFrom<OperationCanceledException>(exception);
         Assert.Equal(2, db.Repository.FindPending().Count);
         Assert.DoesNotContain(db.Repository.GetAll(), scan => scan.SyncStatus == SyncStatus.Failed);
     }

@@ -62,13 +62,8 @@ public sealed class ScanEndpointTests : IDisposable
 
         // Assert
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-
         Assert.Equal((1, 0, 1), Counts(body));
-
-        // Act
         var rejection = body.GetProperty("rejections")[0];
-
-        // Assert
         Assert.Equal(early["scanId"], rejection.GetProperty("scanId").GetString());
         Assert.Contains("before the shipment was created", rejection.GetProperty("reason").GetString());
     }
@@ -76,10 +71,14 @@ public sealed class ScanEndpointTests : IDisposable
     [Fact]
     public async Task PostScans_ScanTimeInFuture_Returns400FromCustomAttribute()
     {
+        // Arrange
+        var future = Scan(at: _factory.Clock.GetUtcNow().AddHours(1));
+
         // Act
-        var errors = await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(at: _factory.Clock.GetUtcNow().AddHours(1)) } }));
+        var response = await _client.PostAsJsonAsync(Scans, new { scans = new[] { future } });
 
         // Assert
+        var errors = await ReadValidationErrors(response);
         Assert.Contains("cannot be in the future", Assert.Single(errors["scans[0].scannedAtUtc"]));
     }
 
@@ -87,13 +86,15 @@ public sealed class ScanEndpointTests : IDisposable
     public async Task PostScans_DeliveredWithoutSignature_Returns400FromValidatableRule()
     {
         // Arrange
-        var unsigned = await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(type: "Delivered") } });
-        var signed = await _client.PostAsJsonAsync(Scans, new { scans = new[] { Scan(type: "Delivered", signature: "Mia Fictional") } });
+        var unsignedScan = Scan(type: "Delivered");
+        var signedScan = Scan(type: "Delivered", signature: "Mia Fictional");
 
         // Act
-        var errors = await ReadValidationErrors(unsigned);
+        var unsigned = await _client.PostAsJsonAsync(Scans, new { scans = new[] { unsignedScan } });
+        var signed = await _client.PostAsJsonAsync(Scans, new { scans = new[] { signedScan } });
 
         // Assert
+        var errors = await ReadValidationErrors(unsigned);
         Assert.Contains("signed for it", Assert.Single(errors["scans[0].recipientSignatureName"]));
         Assert.Equal(HttpStatusCode.OK, signed.StatusCode);
     }
@@ -123,10 +124,13 @@ public sealed class ScanEndpointTests : IDisposable
         // Arrange
         var tooMany = Enumerable.Range(0, 101).Select(_ => Scan()).ToArray();
 
-        // Act and assert
-        await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = Array.Empty<object>() }));
+        // Act
+        var empty = await _client.PostAsJsonAsync(Scans, new { scans = Array.Empty<object>() });
+        var oversized = await _client.PostAsJsonAsync(Scans, new { scans = tooMany });
 
-        await ReadValidationErrors(await _client.PostAsJsonAsync(Scans, new { scans = tooMany }));
+        // Assert
+        await ReadValidationErrors(empty);
+        await ReadValidationErrors(oversized);
     }
 
     [Fact]

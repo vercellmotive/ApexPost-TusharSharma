@@ -67,9 +67,13 @@ public class ScanQueryTests
         using var db = new TestCourierDatabase();
         db.Repository.Create(Scans.Make("APX-A"));
 
-        // Act and assert
-        Assert.Empty(db.Repository.FindByTrackingNumber("APX-NOPE"));
-        Assert.Throws<ArgumentException>(() => db.Repository.FindByTrackingNumber(" "));
+        // Act
+        var unknown = db.Repository.FindByTrackingNumber("APX-NOPE");
+        Action blank = () => db.Repository.FindByTrackingNumber(" ");
+
+        // Assert
+        Assert.Empty(unknown);
+        Assert.Throws<ArgumentException>(blank);
     }
 
     [Fact]
@@ -126,12 +130,14 @@ public class ScanQueryTests
         using var db = new TestCourierDatabase();
         db.Repository.Create(Scans.Make(courierId: "C-1"));
 
+        // Act
         var counts = db.Repository.CountByScanType("C-NOBODY");
+        Action blank = () => db.Repository.CountByScanType("");
 
-        // Act and assert
+        // Assert
         Assert.Equal(Enum.GetValues<ScanType>(), counts.Keys);
         Assert.All(counts.Values, count => Assert.Equal(0, count));
-        Assert.Throws<ArgumentException>(() => db.Repository.CountByScanType(""));
+        Assert.Throws<ArgumentException>(blank);
     }
 
     [Fact]

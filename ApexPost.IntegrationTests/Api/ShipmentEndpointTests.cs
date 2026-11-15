@@ -34,20 +34,14 @@ public sealed class ShipmentEndpointTests : IDisposable
     {
         // Act
         var response = await _client.PostAsJsonAsync(Shipments, NewShipment());
+        var fetched = await _client.GetAsync(response.Headers.Location);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal("/api/v1/shipments/APX-20000001", response.Headers.Location?.AbsolutePath);
-
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-
         Assert.Equal("APX-20000001", body.GetProperty("trackingNumber").GetString());
         Assert.Equal(0, body.GetProperty("status").GetInt32());
-
-        // Act
-        var fetched = await _client.GetAsync(response.Headers.Location);
-
-        // Assert
         Assert.Equal(HttpStatusCode.OK, fetched.StatusCode);
     }
 
@@ -55,7 +49,7 @@ public sealed class ShipmentEndpointTests : IDisposable
     public async Task PostShipment_InvalidFields_Returns400NamingEachField()
     {
         // Arrange
-        var response = await _client.PostAsJsonAsync(Shipments, new
+        var request = new
         {
             trackingNumber = "APX-123",
             originBranchCode = "B001",
@@ -63,12 +57,13 @@ public sealed class ShipmentEndpointTests : IDisposable
             recipientAddress = "12 Example Lane",
             city = "Sydney",
             weightKg = 70.5,
-        });
+        };
 
         // Act
-        var errors = await ReadValidationErrors(response);
+        var response = await _client.PostAsJsonAsync(Shipments, request);
 
         // Assert
+        var errors = await ReadValidationErrors(response);
         Assert.Equal(["recipientName", "recipientPhone", "trackingNumber", "weightKg"], errors.Keys.Order(StringComparer.Ordinal));
     }
 
@@ -99,12 +94,13 @@ public sealed class ShipmentEndpointTests : IDisposable
     public async Task PostShipment_UnknownWeek3Branch_Returns400OnThatField()
     {
         // Arrange
-        var response = await _client.PostAsJsonAsync(Shipments, NewShipment(branch: "B999"));
+        var request = NewShipment(branch: "B999");
 
         // Act
-        var errors = await ReadValidationErrors(response);
+        var response = await _client.PostAsJsonAsync(Shipments, request);
 
         // Assert
+        var errors = await ReadValidationErrors(response);
         Assert.Equal(["originBranchCode"], errors.Keys);
     }
 
@@ -154,21 +150,27 @@ public sealed class ShipmentEndpointTests : IDisposable
         // Arrange
         _factory.Store.Seed(Make.Shipment("APX-10000001"));
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync($"{Shipments}/APX-10000001")).StatusCode);
+        // Act
+        var known = await _client.GetAsync($"{Shipments}/APX-10000001");
+        var unknown = await _client.GetAsync($"{Shipments}/APX-99999999");
 
-        var problem = await ReadProblem(await _client.GetAsync($"{Shipments}/APX-99999999"), HttpStatusCode.NotFound);
-
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, known.StatusCode);
+        var problem = await ReadProblem(unknown, HttpStatusCode.NotFound);
         Assert.Contains("APX-99999999", problem.GetProperty("detail").GetString());
     }
 
     [Fact]
     public async Task GetShipment_BadlyFormedTrackingNumber_DoesNotMatchRoute()
     {
-        // Act and assert
-        await ReadProblem(await _client.GetAsync($"{Shipments}/12345"), HttpStatusCode.NotFound);
+        // Act
+        var tooShort = await _client.GetAsync($"{Shipments}/12345");
+        // The last digit is an Arabic-Indic three, which the route constraint must not accept as a digit.
+        var nonAsciiDigit = await _client.GetAsync($"{Shipments}/APX-1234567٣");
 
-        await ReadProblem(await _client.GetAsync($"{Shipments}/APX-1234567٣"), HttpStatusCode.NotFound);
+        // Assert
+        await ReadProblem(tooShort, HttpStatusCode.NotFound);
+        await ReadProblem(nonAsciiDigit, HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -188,23 +190,15 @@ public sealed class ShipmentEndpointTests : IDisposable
 
         // Act
         var firstPage = await _client.GetFromJsonAsync<JsonElement>(Shipments);
+        var secondPage = await _client.GetFromJsonAsync<JsonElement>($"{Shipments}?page=2");
+        var filtered = await _client.GetFromJsonAsync<JsonElement>($"{Shipments}?status=PickedUp&city=sydney&pageSize=50");
 
         // Assert
         Assert.Equal(20, firstPage.GetProperty("items").GetArrayLength());
         Assert.Equal(25, firstPage.GetProperty("totalCount").GetInt32());
         Assert.Equal(2, firstPage.GetProperty("totalPages").GetInt32());
         Assert.Equal("APX-30000000", firstPage.GetProperty("items")[0].GetProperty("trackingNumber").GetString());
-
-        // Act
-        var secondPage = await _client.GetFromJsonAsync<JsonElement>($"{Shipments}?page=2");
-
-        // Assert
         Assert.Equal(5, secondPage.GetProperty("items").GetArrayLength());
-
-        // Act
-        var filtered = await _client.GetFromJsonAsync<JsonElement>($"{Shipments}?status=PickedUp&city=sydney&pageSize=50");
-
-        // Assert
         Assert.Equal(["APX-30000000", "APX-30000002"], filtered.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("trackingNumber").GetString()));
     }
 
@@ -217,9 +211,10 @@ public sealed class ShipmentEndpointTests : IDisposable
     public async Task ListShipments_BadPagingOrFilter_Returns400(string query, string field)
     {
         // Act
-        var errors = await ReadValidationErrors(await _client.GetAsync($"{Shipments}?{query}"));
+        var response = await _client.GetAsync($"{Shipments}?{query}");
 
         // Assert
+        var errors = await ReadValidationErrors(response);
         Assert.Contains(field, errors.Keys);
     }
 
@@ -310,11 +305,7 @@ public sealed class ShipmentEndpointTests : IDisposable
 
         // Assert
         var problem = await ReadProblem(response, HttpStatusCode.InternalServerError);
-
-        // Act
         var text = problem.GetRawText();
-
-        // Assert
         Assert.True(problem.TryGetProperty("traceId", out _));
         Assert.False(problem.TryGetProperty("exception", out _));
         Assert.DoesNotContain("Sensitive internal detail", text);
@@ -340,10 +331,13 @@ public sealed class ShipmentEndpointTests : IDisposable
     [Fact]
     public async Task AnyEndpoint_WrongVerbOrUnknownRoute_ReturnsProblemDetails()
     {
-        // Act and assert
-        await ReadProblem(await _client.GetAsync("/api/nothing-here"), HttpStatusCode.NotFound);
+        // Act
+        var unknownRoute = await _client.GetAsync("/api/nothing-here");
+        var wrongVerb = await _client.PutAsJsonAsync(Shipments, NewShipment());
 
-        await ReadProblem(await _client.PutAsJsonAsync(Shipments, NewShipment()), HttpStatusCode.MethodNotAllowed);
+        // Assert
+        await ReadProblem(unknownRoute, HttpStatusCode.NotFound);
+        await ReadProblem(wrongVerb, HttpStatusCode.MethodNotAllowed);
     }
 
     internal static async Task<JsonElement> ReadProblem(HttpResponseMessage response, HttpStatusCode expected)

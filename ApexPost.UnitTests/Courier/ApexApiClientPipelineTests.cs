@@ -160,20 +160,29 @@ public sealed class ApexApiClientPipelineTests : IDisposable
     [Fact]
     public void CourierIdentity_TokenOrGarbage_ReadsCourierIdOrNull()
     {
-        // Act and assert
-        Assert.Equal("CR-1001", CourierIdentity.CourierIdFrom(ClientHarness.Token));
-        Assert.Null(CourierIdentity.CourierIdFrom("not.a.token!"));
-        Assert.Null(CourierIdentity.CourierIdFrom(null));
-        Assert.Null(CourierIdentity.CourierIdFrom("a.eyJzdWIiOiJ4In0.c"));
+        // Act
+        var fromToken = CourierIdentity.CourierIdFrom(ClientHarness.Token);
+        var fromGarbage = CourierIdentity.CourierIdFrom("not.a.token!");
+        var fromNull = CourierIdentity.CourierIdFrom(null);
+        var fromTokenWithoutCourierId = CourierIdentity.CourierIdFrom("a.eyJzdWIiOiJ4In0.c");
+
+        // Assert
+        Assert.Equal("CR-1001", fromToken);
+        Assert.Null(fromGarbage);
+        Assert.Null(fromNull);
+        Assert.Null(fromTokenWithoutCourierId);
     }
 
     [Fact]
     public void ApexJson_Options_ComeFromSourceGeneratedContext()
     {
-        // Act and assert
-        Assert.Same(ApexJsonContext.Default.Options, ApexJson.Options);
-        Assert.NotNull(ApexJson.Options.TypeInfoResolver);
-        Assert.True(ApexJson.Options.PropertyNameCaseInsensitive);
-        Assert.Equal(JsonNamingPolicy.CamelCase, ApexJson.Options.PropertyNamingPolicy);
+        // Act
+        var options = ApexJson.Options;
+
+        // Assert
+        Assert.Same(ApexJsonContext.Default.Options, options);
+        Assert.NotNull(options.TypeInfoResolver);
+        Assert.True(options.PropertyNameCaseInsensitive);
+        Assert.Equal(JsonNamingPolicy.CamelCase, options.PropertyNamingPolicy);
     }
 }

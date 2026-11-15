@@ -90,31 +90,30 @@ public sealed class CourierAppEndToEndTests : IDisposable
                 recipientSignatureName: delivered ? "Mia Fictional" : null));
         }
 
-        Assert.Equal(25, _scans.FindPending().Count);
-        Assert.Empty(_api.Store.AllScans);
+        var pendingWhileOffline = _scans.FindPending().Count;
+        var onServerWhileOffline = _api.Store.AllScans.Count;
 
         // Act
         // Back online: the connectivity event starts the upload by itself, in batches of 20.
         _connectivity.Set(true);
         await _sync.BackgroundRun!;
-
-        // Assert
-        Assert.Equal(25, _sync.LastReport!.Synced);
-        Assert.Empty(_scans.FindPending());
-        Assert.All(_scans.GetAll(), scan => Assert.Equal(OfflineSyncStatus.Synced, scan.SyncStatus));
-        Assert.Equal(25, _api.Store.AllScans.Count);
-        Assert.Equal("Mia Fictional", _api.Store.AllScans.Single(scan => scan.ScanType == ScanType.Delivered).RecipientSignatureName);
-
-        // Arrange (next step)
-        // A reply lost on the way back: the device still thinks one scan is Pending and sends it again.
-        var resent = _scans.GetAll()[0];
-        _scans.UpdateSyncStatus(resent.Id, OfflineSyncStatus.Pending);
-
-        // Act
+        var firstReport = _sync.LastReport!;
+        var pendingAfterReconnect = _scans.FindPending().Count;
+        var statusesAfterReconnect = _scans.GetAll().Select(scan => scan.SyncStatus).ToList();
+        var onServerAfterReconnect = _api.Store.AllScans.Count;
+        // Then a reply is lost on the way back: the device still thinks one scan is Pending and sends it again.
+        _scans.UpdateSyncStatus(_scans.GetAll()[0].Id, OfflineSyncStatus.Pending);
         var again = await _sync.SyncPendingAsync();
         var shipment = await Client.GetShipmentAsync("APX-10000001");
 
         // Assert
+        Assert.Equal(25, pendingWhileOffline);
+        Assert.Equal(0, onServerWhileOffline);
+        Assert.Equal(25, firstReport.Synced);
+        Assert.Equal(0, pendingAfterReconnect);
+        Assert.All(statusesAfterReconnect, status => Assert.Equal(OfflineSyncStatus.Synced, status));
+        Assert.Equal(25, onServerAfterReconnect);
+        Assert.Equal("Mia Fictional", _api.Store.AllScans.Single(scan => scan.ScanType == ScanType.Delivered).RecipientSignatureName);
         Assert.Equal(1, again.Synced);
         Assert.Equal(25, _api.Store.AllScans.Count);
         Assert.True(shipment.Succeeded);

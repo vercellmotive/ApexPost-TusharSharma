@@ -50,16 +50,12 @@ public sealed class ScanSyncTests : IDisposable
 
         // Act
         var report = await _sync.SyncPendingAsync();
-
-        // Assert
-        Assert.Equal(45, report.Synced);
-        Assert.Empty(_store.Repository.FindPending());
-
-        // Act
         // The change listener updates the live count on its own thread.
         await Wait.UntilAsync(() => _store.Database.PendingCount == 0);
 
         // Assert
+        Assert.Equal(45, report.Synced);
+        Assert.Empty(_store.Repository.FindPending());
         var sizes = _harness.Server.Received.Select(request => JsonDocument.Parse(request.Body!).RootElement.GetProperty("scans").GetArrayLength()).ToList();
 
         Assert.All(sizes, size => Assert.InRange(size, 1, ScanSyncService.BatchSize));
@@ -129,29 +125,19 @@ public sealed class ScanSyncTests : IDisposable
         Save();
         Save();
         AcceptAll();
-
-        // Act
         var offline = await _sync.SyncPendingAsync();
-
-        // Assert
-        Assert.Equal(0, _harness.Server.Calls);
-        Assert.Contains("offline", offline.StopReason);
-
-        // Arrange (next step)
+        var callsWhileOffline = _harness.Server.Calls;
         await Wait.UntilAsync(() => _store.Database.PendingCount == 2);
 
+        // Act
         _connectivity.Set(true);
-
-        // Act
         await _sync.BackgroundRun!;
-
-        // Assert
-        Assert.Empty(_store.Repository.FindPending());
-
-        // Act
         await Wait.UntilAsync(() => _store.Database.PendingCount == 0);
 
         // Assert
+        Assert.Equal(0, callsWhileOffline);
+        Assert.Contains("offline", offline.StopReason);
+        Assert.Empty(_store.Repository.FindPending());
         Assert.Equal(2, _sync.LastReport!.Synced);
     }
 
@@ -181,14 +167,16 @@ public sealed class ScanSyncTests : IDisposable
             return ScriptedServer.Respond(HttpStatusCode.OK, """{"accepted":1,"duplicatesSkipped":0,"rejected":0}""");
         });
 
+        // Act
         var first = _sync.SyncPendingAsync();
         await Wait.UntilAsync(() => _harness.Server.Calls == 1);
         var second = await _sync.SyncPendingAsync();
         release.SetResult();
+        var firstReport = await first;
 
-        // Act and assert
+        // Assert
         Assert.Equal("A sync is already running.", second.StopReason);
-        Assert.Equal(1, (await first).Synced);
+        Assert.Equal(1, firstReport.Synced);
     }
 
     [Theory]
@@ -256,15 +244,9 @@ public sealed class ScanSyncTests : IDisposable
         // Arrange
         var scan = Save("APX-10000009");
         _harness.Server.Then(HttpStatusCode.NotFound, """{"status":404,"detail":"No shipment has tracking number APX-10000009."}""");
-
-        // Act
         await _sync.SyncPendingAsync();
-
-        // Assert
-        Assert.Equal(SyncStatus.Failed, _store.Repository.Get(scan.Id)!.SyncStatus);
-        Assert.Empty(_store.Repository.FindPending());
-
-        // Arrange (next step)
+        var statusAfterRefusal = _store.Repository.Get(scan.Id)!.SyncStatus;
+        var pendingAfterRefusal = _store.Repository.FindPending().Count;
         // A back-office user has created the shipment since.
         _harness.Server.Then(HttpStatusCode.OK, """{"accepted":1,"duplicatesSkipped":0,"rejected":0,"rejections":[]}""");
 
@@ -272,6 +254,8 @@ public sealed class ScanSyncTests : IDisposable
         var report = await _sync.RetryFailedAsync();
 
         // Assert
+        Assert.Equal(SyncStatus.Failed, statusAfterRefusal);
+        Assert.Equal(0, pendingAfterRefusal);
         Assert.Equal(1, report.Synced);
         Assert.Equal(SyncStatus.Synced, _store.Repository.Get(scan.Id)!.SyncStatus);
     }
