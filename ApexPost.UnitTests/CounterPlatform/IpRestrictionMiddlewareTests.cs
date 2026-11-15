@@ -10,7 +10,7 @@ namespace ApexPost.UnitTests.CounterPlatform;
 public sealed class IpRestrictionMiddlewareTests
 {
     [Fact]
-    public async Task RestrictedEndpoint_RejectsRemoteIpOutsideAllowlist()
+    public async Task InvokeAsync_RestrictedEndpointAndIpOutsideAllowlist_Returns403()
     {
         // Arrange
         var context = new DefaultHttpContext();
@@ -35,7 +35,7 @@ public sealed class IpRestrictionMiddlewareTests
     }
 
     [Fact]
-    public async Task UnmarkedEndpoint_IsNotBlockedByIpAllowlist()
+    public async Task InvokeAsync_UnmarkedEndpointAndIpOutsideAllowlist_CallsNext()
     {
         // Arrange
         var context = new DefaultHttpContext();

@@ -46,7 +46,7 @@ public class ScanQueryTests
     [InlineData("APX-A\" OR 1=1 --")]
     [InlineData("' ; DELETE FROM _ ; --")]
     [InlineData("$trackingNumber")]
-    public void FindByTrackingNumber_TreatsWhateverIsTypedAsDataNeverAsQuery(string hostile)
+    public void FindByTrackingNumber_QueryTextTyped_IsTreatedAsData(string hostile)
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -61,7 +61,7 @@ public class ScanQueryTests
     }
 
     [Fact]
-    public void FindByTrackingNumber_ReturnsNothingForAnUnknownNumber_AndRejectsABlankOne()
+    public void FindByTrackingNumber_UnknownOrBlankNumber_ReturnsNothingOrThrows()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -94,7 +94,7 @@ public class ScanQueryTests
     }
 
     [Fact]
-    public void CountByScanType_CountsEachTypeForOneCourierOnly()
+    public void CountByScanType_TwoCouriers_CountsOnlyTheGivenCourier()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -120,7 +120,7 @@ public class ScanQueryTests
     }
 
     [Fact]
-    public void CountByScanType_ShowsEveryTypeAsZeroForACourierWithNoScans()
+    public void CountByScanType_CourierWithNoScansOrBlank_ReturnsZerosOrThrows()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -135,7 +135,7 @@ public class ScanQueryTests
     }
 
     [Fact]
-    public void EveryStatement_IsAWholeLiteralThatTakesItsValuesAsParameters()
+    public void ScanQueries_EveryStatement_IsALiteralThatTakesParameters()
     {
         // Act
         var statements = typeof(ScanQueries)
@@ -152,7 +152,7 @@ public class ScanQueryTests
     }
 
     [Fact]
-    public void TheTrackingNumberQuery_UsesTheTrackingNumberIndex()
+    public void ByTrackingNumber_Explained_UsesTheTrackingNumberIndex()
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -167,7 +167,7 @@ public class ScanQueryTests
     [Theory]
     [InlineData(nameof(ScanQueries.ByStatus))]
     [InlineData(nameof(ScanQueries.CountByStatus))]
-    public void TheSyncStatusQueries_UseTheSyncStatusIndex(string statement)
+    public void SyncStatusQueries_Explained_UseTheSyncStatusIndex(string statement)
     {
         // Arrange
         using var db = new TestCourierDatabase();
@@ -181,7 +181,7 @@ public class ScanQueryTests
     }
 
     [Fact]
-    public void ExplainQueries_ShowsWhichIndexEachStatementUses()
+    public void ExplainQueries_EveryStatement_ShowsWhichIndexItUses()
     {
         // Arrange
         using var db = new TestCourierDatabase();

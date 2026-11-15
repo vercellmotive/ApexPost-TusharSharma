@@ -1,10 +1,13 @@
-$ APEXPOST_TEST_SQLSERVER="Server=localhost,1433;User Id=sa;Password=<hidden>;TrustServerCertificate=True" dotnet test ApexPost.slnx
+$ APEXPOST_TEST_SQLSERVER="Server=localhost,1433;User Id=sa;Password=<hidden>;TrustServerCertificate=True" dotnet test ApexPost.slnx --no-build
 Test run for ./ApexPost.IntegrationTests/bin/Debug/net10.0/ApexPost.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
-Test run for ./ApexPost.Specs/bin/Debug/net10.0/ApexPost.Specs.dll (.NETCoreApp,Version=v10.0)
 Test run for ./ApexPost.UnitTests/bin/Debug/net10.0/ApexPost.UnitTests.dll (.NETCoreApp,Version=v10.0)
+Test run for ./ApexPost.Specs/bin/Debug/net10.0/ApexPost.Specs.dll (.NETCoreApp,Version=v10.0)
 A total of 1 test files matched the specified pattern.
 A total of 1 test files matched the specified pattern.
 A total of 1 test files matched the specified pattern.
-Passed!  - Failed:     0, Passed:   316, Skipped:     0, Total:   316, Duration: 861 ms - ApexPost.UnitTests.dll (net10.0)
-Passed!  - Failed:     0, Passed:    24, Skipped:     0, Total:    24, Duration: 3 s - ApexPost.Specs.dll (net10.0)
-Passed!  - Failed:     0, Passed:   351, Skipped:     0, Total:   351, Duration: 13 s - ApexPost.IntegrationTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   316, Skipped:     0, Total:   316, Duration: 2 s - ApexPost.UnitTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    24, Skipped:     0, Total:    24, Duration: 4 s - ApexPost.Specs.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   351, Skipped:     0, Total:   351, Duration: 12 s - ApexPost.IntegrationTests.dll (net10.0)

@@ -6,7 +6,7 @@ namespace ApexPost.UnitTests.Offline;
 public class ShipmentScanTests
 {
     [Fact]
-    public void NewId_IsScanPrefixThenACanonicalLowerCaseGuid()
+    public void NewId_Called_ReturnsScanPrefixAndALowerCaseGuid()
     {
         // Act
         var id = ShipmentScan.NewId();
@@ -27,7 +27,7 @@ public class ShipmentScanTests
     [InlineData("scan:3f2504e0-4f89-11d3-9a0c-0305e82c3301", false)]
     [InlineData("", false)]
     [InlineData(null, false)]
-    public void IsValidId_AcceptsOnlyTheScanGuidFormat(string? id, bool expected)
+    public void IsValidId_CandidateId_AcceptsOnlyTheScanGuidFormat(string? id, bool expected)
     {
         // Act
         var valid = ShipmentScan.IsValidId(id);
@@ -66,7 +66,7 @@ public class ShipmentScanTests
     }
 
     [Fact]
-    public void CreatePending_TrimsText_AndTurnsBlankNotesIntoNull()
+    public void CreatePending_PaddedTextAndBlankNotes_TrimsTextAndStoresNullNotes()
     {
         // Act
         var scan = ShipmentScan.CreatePending("  APX-1  ", ScanType.Delivered, " C-7 ", "  Perth WA ", Scans.Noon, "   ");
@@ -85,7 +85,7 @@ public class ShipmentScanTests
     [InlineData("APX-001", "C 1", "Sydney")]
     [InlineData("APX-001", "C-1", "")]
     [InlineData("APX-001", "C-1", "Syd\tney")]
-    public void CreatePending_RejectsBadTrackingNumberCourierOrLocation(string tracking, string courier, string location)
+    public void CreatePending_BlankTrackingNumberCourierOrLocation_Throws(string tracking, string courier, string location)
     {
         // Act
         Action act = () => ShipmentScan.CreatePending(tracking, ScanType.Pickup, courier, location, Scans.Noon);
@@ -95,7 +95,7 @@ public class ShipmentScanTests
     }
 
     [Fact]
-    public void CreatePending_RejectsTextThatIsTooLong()
+    public void CreatePending_TextOverTheMaximumLength_Throws()
     {
         // Act and assert
         Assert.Throws<ArgumentException>(() => Scans.Make(trackingNumber: new string('A', ShipmentScan.MaxTrackingNumberLength + 1)));

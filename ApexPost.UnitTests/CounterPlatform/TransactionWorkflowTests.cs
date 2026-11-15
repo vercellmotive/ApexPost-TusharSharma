@@ -15,7 +15,7 @@ public sealed class TransactionWorkflowTests
     private const string Sku1 = "SKU-001";
 
     [Fact]
-    public async Task FailedBusinessValidation_NeverCommitsAndLeavesStockUnchanged()
+    public async Task CompleteWithRetailItemsAsync_FailedBusinessValidation_NeverCommitsAndLeavesStock()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 10);
@@ -32,7 +32,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task UnknownProductInBasket_NeverCommits()
+    public async Task CompleteWithRetailItemsAsync_UnknownProduct_ThrowsAndNeverCommits()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 10);
@@ -49,7 +49,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task InsufficientStock_FailsWithoutCommitting()
+    public async Task CompleteWithRetailItemsAsync_InsufficientStock_ThrowsWithoutCommitting()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 2);
@@ -63,7 +63,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task FailedSave_LeavesNothingBehind()
+    public async Task CompleteWithRetailItemsAsync_SaveFails_LeavesNothingBehind()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 10);
@@ -78,7 +78,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task SuccessfulMultiLineSale_CommitsOnceAndCombinesDuplicateSkus()
+    public async Task CompleteWithRetailItemsAsync_SameSkuOnTwoLines_CommitsOnceAndCombinesThem()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 10);
@@ -100,7 +100,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task ConcurrentChangeToTheLastUnit_RaisesConflictAndSavesNothing()
+    public async Task CompleteWithRetailItemsAsync_LastUnitSoldConcurrently_ThrowsConflictAndSavesNothing()
     {
         // Arrange
         var (database, _, service) = Arrange(stock: 1);
@@ -123,7 +123,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task StaleStockAtSave_RaisesConcurrencyConflict()
+    public async Task CompleteWithRetailItemsAsync_StaleStockAtSave_ThrowsConcurrencyConflict()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 5);
@@ -141,7 +141,7 @@ public sealed class TransactionWorkflowTests
         new("C01", [new RetailItemRequest(new Sku(Sku1), 1)], [], [], false, DocumentType.Passport, null, "Cash");
 
     [Fact]
-    public async Task Checkout_RetriesAConflictAndCommitsOnce()
+    public async Task CheckoutAsync_OneConflict_RetriesAndCommitsOnce()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 5);
@@ -158,7 +158,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task Checkout_RetryRechecksStockSoItCannotOversell()
+    public async Task CheckoutAsync_StockGoneBeforeTheRetry_ThrowsInsteadOfOverselling()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 1);
@@ -174,7 +174,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task Checkout_GivesUpAfterBoundedAttempts()
+    public async Task CheckoutAsync_ConflictOnEveryAttempt_GivesUpAfterFive()
     {
         // Arrange
         var (database, _, service) = Arrange(stock: 5);
@@ -193,7 +193,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public void MoneyOrder_RequiresVerificationOnlyAboveTheThreshold()
+    public void RequiresVerification_AmountAtOrAboveTheThreshold_IsTrueOnlyAbove()
     {
         // Act
         var threshold = new Money(1000m);
@@ -254,7 +254,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task VoidByClerk_IsRejectedWithoutCommitting()
+    public async Task VoidAsync_ByAClerk_ThrowsWithoutCommitting()
     {
         // Arrange
         var (database, persistence, service) = Arrange(stock: 6, manager: true);
@@ -272,7 +272,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task StockAdjustment_IsManagerScopedAndCannotOverdraw()
+    public async Task AdjustStockAsync_ManagerScopeAndOverdraw_AdjustsOnlyWithinBoth()
     {
         // Arrange
         var (database, persistence, _) = Arrange(stock: 10, manager: true);
@@ -293,7 +293,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task Checkout_SupportsSeveralShipmentsAndMoneyOrdersInOneCommit()
+    public async Task CheckoutAsync_SeveralShipmentsAndMoneyOrders_CommitsOnce()
     {
         // Arrange
         var (_, persistence, service) = Arrange(stock: 10);
@@ -323,7 +323,7 @@ public sealed class TransactionWorkflowTests
     }
 
     [Fact]
-    public async Task Checkout_RequiresIdentityWhenAnyMoneyOrderIsHighValue()
+    public async Task CheckoutAsync_HighValueMoneyOrderWithoutIdentity_Throws()
     {
         // Arrange
         var (_, persistence, service) = Arrange(stock: 10);

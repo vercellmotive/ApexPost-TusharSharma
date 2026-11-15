@@ -28,7 +28,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task Login_UsesEachStaffMembersOwnPassword()
+    public async Task PostLogin_AnotherStaffMembersPassword_IsRefused()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -39,7 +39,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public void SeedAndConfiguration_ContainHashesAndNoPlainPassword()
+    public void SeedAndConfiguration_StaffPasswords_AreHashesNotPlainText()
     {
         // Act
         var staff = _factory.Database.AllStaff();
@@ -56,7 +56,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task ClerkDeniedByPolicy_Gets403AndTheAttemptIsAudited()
+    public async Task PostStockAdjust_ByAClerk_Returns403AndIsAudited()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -90,7 +90,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task ConventionalRoutes_ReplaceTheOldAttributeRoutes()
+    public async Task Routing_OldAttributeRoutes_AreReplacedByConventionalRoutes()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -104,7 +104,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task SameBranchPolicy_BlocksAnotherBranchsReports()
+    public async Task GetReports_AnotherBranch_IsForbidden()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -117,7 +117,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task BlockedIpWithoutKey_GetsForbiddenBeforeTheKeyCheck()
+    public async Task GetParcelStatus_BlockedIpWithoutAKey_Returns403BeforeTheKeyCheck()
     {
         // Arrange
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -131,7 +131,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task Reports_DefaultToTheLatestDayWithSales()
+    public async Task GetReports_NoDateGiven_ShowsTheLatestDayWithSales()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -146,7 +146,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task ManagerCanVoidFromTheTransactionsScreen_AndTheDashboardShowsTheNotification()
+    public async Task PostCounterVoid_ManagerFromTheTransactionsScreen_VoidsAndTheDashboardShowsIt()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -256,7 +256,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task FailedAuditWrite_DoesNotTurnACompletedActionInto500()
+    public async Task PostStockAdjust_AuditWriteFails_StillCompletesWithoutA500()
     {
         // Arrange
         using var factory = new OverridingFactory(services =>
@@ -283,7 +283,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task UnhandledFailure_IsLoggedAs500AndKeepsTheCorrelationId()
+    public async Task GetCatalog_UnhandledFailure_IsLoggedAs500WithTheCorrelationId()
     {
         // Arrange
         var logs = new CapturingLoggerProvider();
@@ -315,7 +315,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task InvalidForm_IsRedisplayedByTheFilterWithItsChoices()
+    public async Task PostMoneyOrder_InvalidForm_IsRedisplayedWithItsChoices()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -345,7 +345,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task NonFormEndpoint_ReturnsConsistentBadRequest()
+    public async Task PostStockAdjust_InvalidNonFormRequest_ReturnsAConsistentBadRequest()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -370,7 +370,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task StandaloneIdentityCheck_ShowsTheMaskedResultAndIsAudited()
+    public async Task PostIdentityVerification_ValidDocument_ShowsTheMaskedResultAndIsAudited()
     {
         // Arrange
         var client = CreateClient(_factory);
@@ -407,7 +407,7 @@ public sealed class WebWorkflowIntegrationTests : IClassFixture<ApexPostWebAppli
     }
 
     [Fact]
-    public async Task RateLimits_ComeFromConfiguration()
+    public async Task PostLogin_OverTheConfiguredLimit_Returns429WithRetryAfter()
     {
         // Arrange
         using var factory = new ConfiguredLoginLimitFactory();
