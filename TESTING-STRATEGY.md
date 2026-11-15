@@ -178,7 +178,7 @@ Each of them now has one Act and one Assert. No test was split or dropped, and t
 
 ## 7. Conventions
 
-- **Naming:** every test name is `Method_Scenario_ExpectedResult`, for example `UploadScansAsync_SameScanIdTwice_CountsSecondAsDuplicate`.
+- **Naming:** every test name is `Method_Scenario_ExpectedResult`, for example `UploadScansAsync_ScanRepeatedInBatch_CountsDuplicate`.
   - The first part is what the test exercises: a method, an HTTP action for the web tests (`PostCounterCreate`, `GetParcelStatus`), or the subject of a test that checks a whole model or layer (`Model`, `SourceFiles`).
   - The second part is the situation, and the third is the expected result.
   - Every one of the 464 test methods has all three parts. No name has only two, and none splits the result with an extra `_And…` part.
