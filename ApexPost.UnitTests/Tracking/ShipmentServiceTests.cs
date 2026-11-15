@@ -76,13 +76,19 @@ public sealed class ShipmentServiceTests
         const string missing = "APX-99999999";
         var details = new ShipmentDetails(Make.Recipient(), 1m);
 
-        // Act and assert
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.GetAsync(missing)).Error?.Kind);
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.ReplaceDetailsAsync(missing, details)).Error?.Kind);
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.ChangeStatusAsync(missing, ShipmentStatus.PickedUp)).Error?.Kind);
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.DeleteAsync(missing)).Error?.Kind);
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.GetScansAsync(missing)).Error?.Kind);
-        Assert.Equal(ServiceErrorKind.NotFound, (await _service.UploadScansAsync(missing, [Make.Scan()], Make.CourierId)).Error?.Kind);
+        // Act
+        ServiceErrorKind?[] errors =
+        [
+            (await _service.GetAsync(missing)).Error?.Kind,
+            (await _service.ReplaceDetailsAsync(missing, details)).Error?.Kind,
+            (await _service.ChangeStatusAsync(missing, ShipmentStatus.PickedUp)).Error?.Kind,
+            (await _service.DeleteAsync(missing)).Error?.Kind,
+            (await _service.GetScansAsync(missing)).Error?.Kind,
+            (await _service.UploadScansAsync(missing, [Make.Scan()], Make.CourierId)).Error?.Kind,
+        ];
+
+        // Assert
+        Assert.All(errors, kind => Assert.Equal(ServiceErrorKind.NotFound, kind));
     }
 
     [Fact]
@@ -151,9 +157,13 @@ public sealed class ShipmentServiceTests
         _store.Seed(Make.Shipment("APX-10000001"));
         _store.Seed(Make.ShipmentIn(ShipmentStatus.PickedUp, "APX-10000002"));
 
-        // Act and assert
-        Assert.True((await _service.DeleteAsync("APX-10000001")).Succeeded);
-        Assert.Equal(ServiceErrorKind.Conflict, (await _service.DeleteAsync("APX-10000002")).Error?.Kind);
+        // Act
+        var deleteCreated = await _service.DeleteAsync("APX-10000001");
+        var deletePickedUp = await _service.DeleteAsync("APX-10000002");
+
+        // Assert
+        Assert.True(deleteCreated.Succeeded);
+        Assert.Equal(ServiceErrorKind.Conflict, deletePickedUp.Error?.Kind);
         Assert.False(await _store.ExistsAsync("APX-10000001"));
         Assert.True(await _store.ExistsAsync("APX-10000002"));
     }
@@ -229,11 +239,7 @@ public sealed class ShipmentServiceTests
         // Assert
         Assert.Equal(1, result.Value!.Accepted);
         Assert.Equal(5, result.Value.Rejected);
-
-        // Act
         var reasons = result.Value.Rejections.ToDictionary(rejection => rejection.ScanId, rejection => rejection.Reason);
-
-        // Assert
         Assert.Contains("another shipment", reasons[taken.ScanId]);
         Assert.Contains("future", reasons[future.ScanId]);
         Assert.Contains("before the shipment was created", reasons[beforeCreation.ScanId]);
@@ -312,29 +318,32 @@ public sealed class ShipmentServiceTests
     {
         // Arrange
         _store.Seed(Make.ShipmentIn(ShipmentStatus.OutForDelivery));
-
-        // Act
+        // An InTransit scan does not move an out-for-delivery shipment.
         var transit = await _service.UploadScansAsync("APX-10000001", [Make.Scan(type: ScanType.InTransit)], Make.CourierId);
-
-        // Assert
-        Assert.Equal(ShipmentStatus.OutForDelivery, (await _service.GetAsync("APX-10000001")).Value!.Status);
-        Assert.Equal(1, transit.Value!.Accepted);
-
-        // Arrange (next step)
+        var statusAfterTransit = (await _service.GetAsync("APX-10000001")).Value!.Status;
+        // Another request moves the shipment between this upload's read and its save.
         _store.FailNextSave = new ConcurrencyConflictException("Another request moved it.");
 
         // Act
         var delivered = await _service.UploadScansAsync("APX-10000001", [Make.Scan(type: ScanType.Delivered, signature: "Mia Fictional")], Make.CourierId);
 
         // Assert
+        Assert.Equal(1, transit.Value!.Accepted);
+        Assert.Equal(ShipmentStatus.OutForDelivery, statusAfterTransit);
+        Assert.True(delivered.Succeeded);
         Assert.Equal(1, delivered.Value!.Accepted);
     }
 
     [Fact]
     public async Task ListAsync_PageSizeAboveMaximum_Throws()
     {
-        // Act and assert
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            _service.ListAsync(new ShipmentQuery(1, ShipmentQuery.MaximumPageSize + 1, null, null)));
+        // Arrange
+        var query = new ShipmentQuery(1, ShipmentQuery.MaximumPageSize + 1, null, null);
+
+        // Act
+        Func<Task> act = () => _service.ListAsync(query);
+
+        // Assert
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(act);
     }
 }

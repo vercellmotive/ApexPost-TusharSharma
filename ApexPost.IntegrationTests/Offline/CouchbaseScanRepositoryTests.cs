@@ -45,8 +45,11 @@ public class CouchbaseScanRepositoryTests
 
         var synced = Scans.Make() with { SyncStatus = SyncStatus.Synced };
 
-        // Act and assert
-        Assert.Throws<ArgumentException>(() => db.Repository.Create(synced));
+        // Act
+        var exception = Record.Exception(() => db.Repository.Create(synced));
+
+        // Assert
+        Assert.IsType<ArgumentException>(exception);
         Assert.Null(db.Repository.Get(synced.Id));
     }
 
@@ -57,9 +60,11 @@ public class CouchbaseScanRepositoryTests
         using var db = new TestCourierDatabase();
         var original = db.Repository.Create(Scans.Make(notes: "original"));
 
-        // Act and assert
-        Assert.Throws<InvalidOperationException>(() => db.Repository.Create(original with { Notes = "overwrite attempt" }));
+        // Act
+        var exception = Record.Exception(() => db.Repository.Create(original with { Notes = "overwrite attempt" }));
 
+        // Assert
+        Assert.IsType<InvalidOperationException>(exception);
         Assert.Equal("original", db.Repository.Get(original.Id)!.Notes);
         Assert.Single(db.Repository.GetAll());
     }
@@ -70,22 +75,31 @@ public class CouchbaseScanRepositoryTests
         // Arrange
         using var db = new TestCourierDatabase();
 
-        // Act and assert
-        Assert.Throws<ArgumentException>(() => db.Repository.Create(Scans.Make() with { Id = "scan::oops" }));
-        Assert.Throws<ArgumentException>(() => db.Repository.Create(Scans.Make() with { TrackingNumber = "has space" }));
-        Assert.Throws<ArgumentNullException>(() => db.Repository.Create(null!));
+        // Act
+        var badId = Record.Exception(() => db.Repository.Create(Scans.Make() with { Id = "scan::oops" }));
+        var badTrackingNumber = Record.Exception(() => db.Repository.Create(Scans.Make() with { TrackingNumber = "has space" }));
+        var nullScan = Record.Exception(() => db.Repository.Create(null!));
+
+        // Assert
+        Assert.IsType<ArgumentException>(badId);
+        Assert.IsType<ArgumentException>(badTrackingNumber);
+        Assert.IsType<ArgumentNullException>(nullScan);
         Assert.Empty(db.Repository.GetAll());
     }
 
     [Fact]
-    public void Get_ReturnsNull_ForAnIdThatDoesNotExist()
+    public void Get_UnknownOrBlankId_ReturnsNullOrThrows()
     {
         // Arrange
         using var db = new TestCourierDatabase();
 
-        // Act and assert
-        Assert.Null(db.Repository.Get(ShipmentScan.NewId()));
-        Assert.Throws<ArgumentException>(() => db.Repository.Get(" "));
+        // Act
+        var unknown = db.Repository.Get(ShipmentScan.NewId());
+        Action blank = () => db.Repository.Get(" ");
+
+        // Assert
+        Assert.Null(unknown);
+        Assert.Throws<ArgumentException>(blank);
     }
 
     [Fact]
@@ -133,31 +147,32 @@ public class CouchbaseScanRepositoryTests
         // Arrange
         using var db = new TestCourierDatabase();
         var scan = db.Repository.Create(Scans.Make(notes: "before"));
-
-        // Act
         db.Repository.Update(scan with { Notes = "edited meanwhile" });
 
-        // Assert
-        Assert.True(db.Repository.UpdateSyncStatus(scan.Id, SyncStatus.Synced));
-
         // Act
-        var read = db.Repository.Get(scan.Id)!;
+        var updated = db.Repository.UpdateSyncStatus(scan.Id, SyncStatus.Synced);
 
         // Assert
+        Assert.True(updated);
+        var read = db.Repository.Get(scan.Id)!;
         Assert.Equal(SyncStatus.Synced, read.SyncStatus);
         Assert.Equal("edited meanwhile", read.Notes);
         Assert.Equal(scan.TrackingNumber, read.TrackingNumber);
     }
 
     [Fact]
-    public void UpdateSyncStatus_ReturnsFalse_ForAScanThatIsGone()
+    public void UpdateSyncStatus_GoneScanOrUndefinedStatus_ReturnsFalseOrThrows()
     {
         // Arrange
         using var db = new TestCourierDatabase();
 
-        // Act and assert
-        Assert.False(db.Repository.UpdateSyncStatus(ShipmentScan.NewId(), SyncStatus.Synced));
-        Assert.Throws<ArgumentOutOfRangeException>(() => db.Repository.UpdateSyncStatus(ShipmentScan.NewId(), (SyncStatus)42));
+        // Act
+        var goneScan = db.Repository.UpdateSyncStatus(ShipmentScan.NewId(), SyncStatus.Synced);
+        Action undefinedStatus = () => db.Repository.UpdateSyncStatus(ShipmentScan.NewId(), (SyncStatus)42);
+
+        // Assert
+        Assert.False(goneScan);
+        Assert.Throws<ArgumentOutOfRangeException>(undefinedStatus);
     }
 
     [Fact]

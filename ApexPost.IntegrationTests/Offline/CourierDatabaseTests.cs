@@ -78,21 +78,23 @@ public class CourierDatabaseTests
     [Fact]
     public void Dispose_OpenDatabase_RemovesTheListenerAndCloses()
     {
-        // Act
+        // Arrange
         using var db = new TestCourierDatabase();
+        var listenerWhileOpen = db.Database.HasChangeListener;
+
+        // Act
+        db.Database.Dispose();
+        Action readIndexes = () => db.Database.GetIndexNames();
+        Action readAll = () => db.Repository.GetAll();
+        Action readOne = () => db.Repository.Get("scan::3f2504e0-4f89-11d3-9a0c-0305e82c3301");
 
         // Assert
-        Assert.True(db.Database.HasChangeListener);
-
-        // Arrange (next step)
-        db.Database.Dispose();
-
-        // Act and assert
+        Assert.True(listenerWhileOpen);
         Assert.False(db.Database.HasChangeListener);
         Assert.True(db.Database.IsDisposed);
-        Assert.Throws<ObjectDisposedException>(() => db.Database.GetIndexNames());
-        Assert.Throws<ObjectDisposedException>(() => db.Repository.GetAll());
-        Assert.Throws<ObjectDisposedException>(() => db.Repository.Get("scan::3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
+        Assert.Throws<ObjectDisposedException>(readIndexes);
+        Assert.Throws<ObjectDisposedException>(readAll);
+        Assert.Throws<ObjectDisposedException>(readOne);
     }
 
     [Fact]

@@ -39,13 +39,15 @@ public sealed class StaffManagementServiceTests
         var service = CreateService(CreateDatabase(
             [CreateStaff("STF001", "clerk@example.test")]));
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateAsync(new StaffRecordInput(
-                "Another Clerk",
-                "CLERK@example.test",
-                StaffRole.CounterClerk,
-                "B001")));
+        // Act
+        Func<Task> act = () => service.CreateAsync(new StaffRecordInput(
+            "Another Clerk",
+            "CLERK@example.test",
+            StaffRole.CounterClerk,
+            "B001"));
+
+        // Assert
+        await Assert.ThrowsAsync<DomainValidationException>(act);
     }
 
     [Fact]
@@ -78,17 +80,15 @@ public sealed class StaffManagementServiceTests
         var updated = await service.UpdateAsync(
             "STF001",
             new StaffRecordInput("Updated Clerk", "updated@example.test", StaffRole.Auditor, "B001"));
+        var deactivateInactive = await Record.ExceptionAsync(() => service.DeactivateAsync("STF001"));
+        var deactivateUnknown = await Record.ExceptionAsync(() => service.DeactivateAsync("STF404"));
 
         // Assert
         Assert.False(updated.IsActive);
         Assert.Equal("Updated Clerk", updated.Name);
         Assert.Equal(StaffRole.Auditor, updated.Role);
-
-        // Act
-        await service.DeactivateAsync("STF001");
-
-        // Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.DeactivateAsync("STF404"));
+        Assert.Null(deactivateInactive);
+        Assert.IsType<KeyNotFoundException>(deactivateUnknown);
     }
 
     [Fact]
@@ -97,19 +97,21 @@ public sealed class StaffManagementServiceTests
         // Arrange
         var service = CreateService(CreateDatabase());
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateAsync(new StaffRecordInput(
-                "Clerk",
-                "clerk@example.test",
-                StaffRole.CounterClerk,
-                "B404")));
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateAsync(new StaffRecordInput(
-                "Clerk",
-                "clerk@example.test",
-                (StaffRole)999,
-                "B001")));
+        // Act
+        Func<Task> unknownBranch = () => service.CreateAsync(new StaffRecordInput(
+            "Clerk",
+            "clerk@example.test",
+            StaffRole.CounterClerk,
+            "B404"));
+        Func<Task> undefinedRole = () => service.CreateAsync(new StaffRecordInput(
+            "Clerk",
+            "clerk@example.test",
+            (StaffRole)999,
+            "B001"));
+
+        // Assert
+        await Assert.ThrowsAsync<DomainValidationException>(unknownBranch);
+        await Assert.ThrowsAsync<DomainValidationException>(undefinedRole);
     }
 
     private static StaffManagementService CreateService(InMemoryDatabase staff)

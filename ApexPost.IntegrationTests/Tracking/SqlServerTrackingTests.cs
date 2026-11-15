@@ -88,7 +88,11 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         await using var db = database.CreateContext();
         // Created at the start, an hour before "now", so scans made in between are neither early nor in the future.
         var result = await database.CreateService(db, new FakeTimeProvider(TestTime.Start)).CreateAsync(new NewShipment(trackingNumber, "B001", Make.Recipient(city), 1.25m));
-        Assert.True(result.Succeeded, result.Error?.Detail);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"Creating test shipment {trackingNumber} failed: {result.Error?.Detail}");
+        }
+
         return trackingNumber;
     }
 
@@ -118,8 +122,11 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
 
         store.Add(Shipment.Create(trackingNumber, "B001", Make.Recipient(), 1m, _clock.GetUtcNow()));
 
-        // Act and assert
-        await Assert.ThrowsAsync<DuplicateValueException>(() => store.SaveChangesAsync());
+        // Act
+        Func<Task> act = () => store.SaveChangesAsync();
+
+        // Assert
+        await Assert.ThrowsAsync<DuplicateValueException>(act);
     }
 
     [SqlServerFact]
@@ -131,18 +138,17 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         await using var second = database.CreateContext();
         var firstService = database.CreateService(first, _clock);
         var secondStore = new EfShipmentStore(second);
-
-        // Act
+        // The second context reads the shipment, then the first moves it on before the second saves.
         var stale = await secondStore.FindAsync(trackingNumber);
-
-        // Assert
-        Assert.True((await firstService.ChangeStatusAsync(trackingNumber, ShipmentStatus.PickedUp)).Succeeded);
-
-        // Arrange (next step)
+        var firstMove = await firstService.ChangeStatusAsync(trackingNumber, ShipmentStatus.PickedUp);
         stale!.MoveTo(ShipmentStatus.PickedUp, _clock.GetUtcNow());
 
-        // Act and assert
-        await Assert.ThrowsAsync<ConcurrencyConflictException>(() => secondStore.SaveChangesAsync());
+        // Act
+        Func<Task> act = () => secondStore.SaveChangesAsync();
+
+        // Assert
+        Assert.True(firstMove.Succeeded);
+        await Assert.ThrowsAsync<ConcurrencyConflictException>(act);
     }
 
     [SqlServerFact]
@@ -163,14 +169,8 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         Assert.Equal(20, outcomes.Sum(outcome => outcome.Accepted));
         Assert.Equal(60, outcomes.Sum(outcome => outcome.DuplicatesSkipped));
         Assert.All(outcomes, outcome => Assert.Equal(0, outcome.Rejected));
-
-        // Arrange (next step)
         await using var check = database.CreateContext();
-
-        // Act
         var shipment = await check.Shipments.SingleAsync(item => item.TrackingNumber == trackingNumber);
-
-        // Assert
         Assert.Equal(20, await check.Scans.CountAsync(scan => scan.ShipmentId == shipment.Id));
     }
 
@@ -196,11 +196,7 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
 
         // Assert
         Assert.Equal(2, page.TotalCount);
-
-        // Act
         var views = page.Items.ToDictionary(view => view.TrackingNumber);
-
-        // Assert
         Assert.Equal(ScanType.InTransit, views[withScans].LatestScan?.ScanType);
         Assert.Null(views[withoutScans].LatestScan);
     }
@@ -212,13 +208,13 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         var trackingNumber = await CreateShipmentAsync();
         await using var db = database.CreateContext();
         var service = database.CreateService(db, _clock);
-
-        // Act
         await service.UploadScansAsync(trackingNumber, [Make.Scan()], Make.CourierId);
 
-        // Assert
-        Assert.True((await service.DeleteAsync(trackingNumber)).Succeeded);
+        // Act
+        var deleted = await service.DeleteAsync(trackingNumber);
 
+        // Assert
+        Assert.True(deleted.Succeeded);
         Assert.False(await db.Shipments.AnyAsync(item => item.TrackingNumber == trackingNumber));
         Assert.Equal(0, await db.Scans.CountAsync(scan => !db.Shipments.Any(shipment => shipment.Id == scan.ShipmentId)));
     }
@@ -232,8 +228,11 @@ public sealed class SqlServerTrackingTests(TrackingTestDatabase database) : ICla
         var shipment = await db.Shipments.SingleAsync(item => item.TrackingNumber == trackingNumber);
         db.Scans.Add(TrackingScan.Record(Guid.NewGuid(), shipment.Id, ScanType.Delivered, "CR-1", "Door", _clock.GetUtcNow(), null, null, _clock.GetUtcNow()));
 
-        // Act and assert
-        var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        // Act
+        var exception = await Record.ExceptionAsync(() => db.SaveChangesAsync());
+
+        // Assert
+        var error = Assert.IsType<DbUpdateException>(exception);
         Assert.Contains("CK_Scans_DeliveredSignature", error.InnerException?.Message);
     }
 

@@ -28,21 +28,15 @@ public sealed class ApiKeyAuthenticationMiddlewareTests
         // Arrange
         var configuration = CreateConfiguration();
         var missing = CreateProtectedContext();
-
-        // Act
-        await CreateMiddleware(configuration, _ => Task.CompletedTask).InvokeAsync(missing);
-
-        // Assert
-        Assert.Equal(StatusCodes.Status401Unauthorized, missing.Response.StatusCode);
-
-        // Arrange (next step)
         var invalid = CreateProtectedContext();
         invalid.Request.Headers["X-Api-Key"] = "incorrect";
 
         // Act
+        await CreateMiddleware(configuration, _ => Task.CompletedTask).InvokeAsync(missing);
         await CreateMiddleware(configuration, _ => Task.CompletedTask).InvokeAsync(invalid);
 
         // Assert
+        Assert.Equal(StatusCodes.Status401Unauthorized, missing.Response.StatusCode);
         Assert.Equal(StatusCodes.Status401Unauthorized, invalid.Response.StatusCode);
     }
 

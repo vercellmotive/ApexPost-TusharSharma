@@ -24,11 +24,7 @@ public sealed class ClientSdkTests : IDisposable
 
         // Assert
         Assert.Equal(0, exitCode);
-
-        // Act
         var lines = output.ToString();
-
-        // Assert
         Assert.Contains("Uploaded 2 scans: 2 accepted, 0 duplicates skipped, 0 rejected", lines);
         Assert.Contains("Latest   InTransit at Sydney hub", lines);
         Assert.Contains("Handled  404: Shipment not found.", lines);

@@ -26,8 +26,11 @@ namespace ApexPost.UnitTests.CounterPlatform
             tx.AddLineItem(new TransactionLineItem(Guid.NewGuid(), "Money Order", Domain.Enums.LineItemType.MoneyOrder, 1, new Domain.ValueObjects.Money(1510m), Domain.Enums.TaxCategory.Exempt,
                 MoneyOrder: new MoneyOrderDetails(new Domain.ValueObjects.Money(1500m), "Alice", "Bob", new Domain.ValueObjects.Money(10m))));
 
-            // Act and assert
-            Assert.Throws<DomainValidationException>(() => tx.Complete("Cash", new Domain.ValueObjects.Money(1000m)));
+            // Act
+            Action act = () => tx.Complete("Cash", new Domain.ValueObjects.Money(1000m));
+
+            // Assert
+            Assert.Throws<DomainValidationException>(act);
         }
 
         [Fact]
@@ -59,8 +62,11 @@ namespace ApexPost.UnitTests.CounterPlatform
             // Arrange
             var parcel = new ShippingDetails(true, Weight.FromKilograms(13.5m), new Dimensions(10, 10, 10), "Zone 1", ServiceLevel.Express);
 
-            // Act and assert
-            Assert.Throws<DomainValidationException>(() => _pricing.ValidateWeightLimits(parcel));
+            // Act
+            Action act = () => _pricing.ValidateWeightLimits(parcel);
+
+            // Assert
+            Assert.Throws<DomainValidationException>(act);
         }
 
         [Fact]
@@ -86,8 +92,11 @@ namespace ApexPost.UnitTests.CounterPlatform
                 HomeBranchCode = new BranchCode("B001")
             };
 
-           // Act and assert
-           Assert.Throws<UnauthorizedDomainActionException>(() => tx.Void(clerk, "Customer changed mind"));
+            // Act
+            Action act = () => tx.Void(clerk, "Customer changed mind");
+
+            // Assert
+            Assert.Throws<UnauthorizedDomainActionException>(act);
         }
 
         [Fact]
@@ -103,16 +112,18 @@ namespace ApexPost.UnitTests.CounterPlatform
             stock.AddStock(2);
             stock.ReduceStock(2);
 
-            // Act and assert
-            Assert.Equal(0, stock.QuantityOnHand);
-            Assert.Throws<DomainValidationException>(() => stock.ReduceStock(1));
+            // Act
+            var exception = Record.Exception(() => stock.ReduceStock(1));
+
+            // Assert
+            Assert.IsType<DomainValidationException>(exception);
             Assert.Equal(0, stock.QuantityOnHand);
         }
 
         [Fact]
         public void CalculateShippingPrice_StandardParcelInZone2_UsesServiceLevelZoneAndWeight()
         {
-            // Act
+            // Arrange
             var parcel = new ShippingDetails(
                 true,
                 Weight.FromKilograms(2m),
@@ -120,8 +131,11 @@ namespace ApexPost.UnitTests.CounterPlatform
                 "Zone 2",
                 ServiceLevel.Standard);
 
+            // Act
+            var price = _pricing.CalculateShippingPrice(parcel);
+
             // Assert
-            Assert.Equal(new Money(13m), _pricing.CalculateShippingPrice(parcel));
+            Assert.Equal(new Money(13m), price);
         }
 
         [Fact]
@@ -165,9 +179,11 @@ namespace ApexPost.UnitTests.CounterPlatform
         [Fact]
         public void Constructor_UnmaskedDocumentValue_Throws()
         {
-            // Act and assert
-            Assert.Throws<ArgumentException>(() =>
-                new IdVerificationDetails(DocumentType.Passport, "A123456789", true));
+            // Act
+            Action act = () => new IdVerificationDetails(DocumentType.Passport, "A123456789", true);
+
+            // Assert
+            Assert.Throws<ArgumentException>(act);
         }
 
         [Fact]
@@ -216,18 +232,6 @@ namespace ApexPost.UnitTests.CounterPlatform
                 TaxCategory.StandardGst,
                 new Sku("SKU-001")));
             transaction.Complete("Cash", new Money(1000m));
-
-            // Act
-            var restored = System.Text.Json.JsonSerializer.Deserialize<Transaction>(
-                System.Text.Json.JsonSerializer.Serialize(transaction))
-                ?? throw new InvalidOperationException("Transaction round-trip returned null.");
-
-            // Assert
-            Assert.Equal(TransactionStatus.Paid, restored.Status);
-            Assert.Equal("Cash", restored.PaymentMethod);
-            Assert.Single(restored.LineItems);
-
-            // Arrange (next step)
             var manager = new Staff
             {
                 Id = "STF001",
@@ -236,14 +240,21 @@ namespace ApexPost.UnitTests.CounterPlatform
                 Role = StaffRole.BranchManager,
                 HomeBranchCode = new BranchCode("B001")
             };
-            restored.Void(manager, "Customer requested cancellation");
+            static Transaction RoundTrip(Transaction value) =>
+                System.Text.Json.JsonSerializer.Deserialize<Transaction>(System.Text.Json.JsonSerializer.Serialize(value))
+                ?? throw new InvalidOperationException("Transaction round-trip returned null.");
 
             // Act
-            var restoredReversal = System.Text.Json.JsonSerializer.Deserialize<Transaction>(
-                System.Text.Json.JsonSerializer.Serialize(restored))
-                ?? throw new InvalidOperationException("Transaction reversal round-trip returned null.");
+            // Round-trip the sale, void the restored copy, then round-trip the reversal.
+            var restored = RoundTrip(transaction);
+            var (statusAfterRoundTrip, paymentAfterRoundTrip, linesAfterRoundTrip) = (restored.Status, restored.PaymentMethod, restored.LineItems.Count);
+            restored.Void(manager, "Customer requested cancellation");
+            var restoredReversal = RoundTrip(restored);
 
             // Assert
+            Assert.Equal(TransactionStatus.Paid, statusAfterRoundTrip);
+            Assert.Equal("Cash", paymentAfterRoundTrip);
+            Assert.Equal(1, linesAfterRoundTrip);
             Assert.Equal(TransactionStatus.Voided, restoredReversal.Status);
             Assert.Equal("Customer requested cancellation", restoredReversal.VoidReason);
             Assert.Equal("STF001", restoredReversal.VoidedByManagerId);
@@ -252,8 +263,15 @@ namespace ApexPost.UnitTests.CounterPlatform
         [Fact]
         public void Add_DifferentCurrencies_Throws()
         {
-            // Act and assert
-            Assert.Throws<InvalidOperationException>(() => new Money(1m, "AUD") + new Money(1m, "USD"));
+            // Arrange
+            var australianDollar = new Money(1m, "AUD");
+            var usDollar = new Money(1m, "USD");
+
+            // Act
+            Action act = () => _ = australianDollar + usDollar;
+
+            // Assert
+            Assert.Throws<InvalidOperationException>(act);
         }
 
         [Fact]
@@ -270,8 +288,11 @@ namespace ApexPost.UnitTests.CounterPlatform
             transaction.AddLineItem(new TransactionLineItem(
                 Guid.NewGuid(), "Box", LineItemType.RetailProduct, 1, new Money(5m), TaxCategory.StandardGst, new Sku("SKU-001")));
 
-            // Act and assert
-            Assert.Throws<DomainValidationException>(() => transaction.Complete("Cheque", new Money(1000m)));
+            // Act
+            var exception = Record.Exception(() => transaction.Complete("Cheque", new Money(1000m)));
+
+            // Assert
+            Assert.IsType<DomainValidationException>(exception);
             Assert.Equal(TransactionStatus.Open, transaction.Status);
         }
 
@@ -295,14 +316,17 @@ namespace ApexPost.UnitTests.CounterPlatform
                 TaxCategory.StandardGst,
                 new Sku("SKU-001"));
 
-            // Act and assert
-            Assert.Throws<DomainValidationException>(() => transaction.AddLineItem(line));
+            // Act
+            Action act = () => transaction.AddLineItem(line);
+
+            // Assert
+            Assert.Throws<DomainValidationException>(act);
         }
 
         [Fact]
         public void IsOpen_UtcTime_UsesTheBranchLocalTime()
         {
-            // Act
+            // Arrange
             var branch = new Branch
             {
                 Id = new BranchCode("B001"),
@@ -313,9 +337,14 @@ namespace ApexPost.UnitTests.CounterPlatform
                 CloseTime = new TimeSpan(17, 0, 0)
             };
 
+            // Act
+            // 00:00Z is 11:00 in Sydney (daylight time) and 20:00Z is 07:00 the next morning.
+            var openAtMidnightUtc = branch.IsOpen(DateTimeOffset.Parse("2026-10-25T00:00:00Z"));
+            var openAtEightPmUtc = branch.IsOpen(DateTimeOffset.Parse("2026-10-25T20:00:00Z"));
+
             // Assert
-            Assert.True(branch.IsOpen(DateTimeOffset.Parse("2026-10-25T00:00:00Z")));
-            Assert.False(branch.IsOpen(DateTimeOffset.Parse("2026-10-25T20:00:00Z")));
+            Assert.True(openAtMidnightUtc);
+            Assert.False(openAtEightPmUtc);
         }
 
         [Fact]
@@ -331,11 +360,6 @@ namespace ApexPost.UnitTests.CounterPlatform
                 HomeBranchCode = new BranchCode("B001"),
                 IsActive = false
             };
-
-            // Act and assert
-            Assert.Throws<UnauthorizedDomainActionException>(() => staff.EnsureCanTransact(new BranchCode("B001")));
-
-            // Arrange (next step)
             var activeStaff = new Staff
             {
                 Id = "STF02",
@@ -344,11 +368,6 @@ namespace ApexPost.UnitTests.CounterPlatform
                 Role = StaffRole.CounterClerk,
                 HomeBranchCode = new BranchCode("B001")
             };
-
-            // Act and assert
-            Assert.Throws<UnauthorizedDomainActionException>(() => activeStaff.EnsureCanTransact(new BranchCode("B002")));
-
-            // Arrange (next step)
             var auditor = new Staff
             {
                 Id = "STF03",
@@ -358,8 +377,15 @@ namespace ApexPost.UnitTests.CounterPlatform
                 HomeBranchCode = new BranchCode("B001")
             };
 
-            // Act and assert
-            Assert.Throws<UnauthorizedDomainActionException>(() => auditor.EnsureCanTransact(new BranchCode("B001")));
+            // Act
+            Action inactiveAtHome = () => staff.EnsureCanTransact(new BranchCode("B001"));
+            Action activeAtAnotherBranch = () => activeStaff.EnsureCanTransact(new BranchCode("B002"));
+            Action auditorAtHome = () => auditor.EnsureCanTransact(new BranchCode("B001"));
+
+            // Assert
+            Assert.Throws<UnauthorizedDomainActionException>(inactiveAtHome);
+            Assert.Throws<UnauthorizedDomainActionException>(activeAtAnotherBranch);
+            Assert.Throws<UnauthorizedDomainActionException>(auditorAtHome);
         }
     }
 }

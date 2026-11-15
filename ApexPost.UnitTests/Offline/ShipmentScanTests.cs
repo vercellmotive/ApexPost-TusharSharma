@@ -97,11 +97,17 @@ public class ShipmentScanTests
     [Fact]
     public void CreatePending_TextOverTheMaximumLength_Throws()
     {
-        // Act and assert
-        Assert.Throws<ArgumentException>(() => Scans.Make(trackingNumber: new string('A', ShipmentScan.MaxTrackingNumberLength + 1)));
-        Assert.Throws<ArgumentException>(() => Scans.Make(courierId: new string('C', ShipmentScan.MaxCourierIdLength + 1)));
-        Assert.Throws<ArgumentException>(() => Scans.Make(location: new string('L', ShipmentScan.MaxLocationLength + 1)));
-        Assert.Throws<ArgumentException>(() => Scans.Make(notes: new string('N', ShipmentScan.MaxNotesLength + 1)));
+        // Act
+        Action longTrackingNumber = () => Scans.Make(trackingNumber: new string('A', ShipmentScan.MaxTrackingNumberLength + 1));
+        Action longCourierId = () => Scans.Make(courierId: new string('C', ShipmentScan.MaxCourierIdLength + 1));
+        Action longLocation = () => Scans.Make(location: new string('L', ShipmentScan.MaxLocationLength + 1));
+        Action longNotes = () => Scans.Make(notes: new string('N', ShipmentScan.MaxNotesLength + 1));
+
+        // Assert
+        Assert.Throws<ArgumentException>(longTrackingNumber);
+        Assert.Throws<ArgumentException>(longCourierId);
+        Assert.Throws<ArgumentException>(longLocation);
+        Assert.Throws<ArgumentException>(longNotes);
     }
 
     [Fact]
@@ -110,19 +116,30 @@ public class ShipmentScanTests
         // Arrange
         var good = Scans.Make();
 
-        // Act and assert
-        Assert.Throws<ArgumentException>(() => (good with { ScannedAtUtc = new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.FromHours(10)) }).Validate());
-        Assert.Throws<ArgumentException>(() => (good with { ScanType = (ScanType)99 }).Validate());
-        Assert.Throws<ArgumentException>(() => (good with { SyncStatus = (SyncStatus)99 }).Validate());
-        Assert.Throws<ArgumentException>(() => (good with { Id = "scan::123" }).Validate());
-        good.Validate();
+        // Act
+        Action nonUtcTime = () => (good with { ScannedAtUtc = new DateTimeOffset(2026, 11, 2, 9, 0, 0, TimeSpan.FromHours(10)) }).Validate();
+        Action unknownScanType = () => (good with { ScanType = (ScanType)99 }).Validate();
+        Action unknownSyncStatus = () => (good with { SyncStatus = (SyncStatus)99 }).Validate();
+        Action badId = () => (good with { Id = "scan::123" }).Validate();
+        var goodError = Record.Exception(() => good.Validate());
+
+        // Assert
+        Assert.Throws<ArgumentException>(nonUtcTime);
+        Assert.Throws<ArgumentException>(unknownScanType);
+        Assert.Throws<ArgumentException>(unknownSyncStatus);
+        Assert.Throws<ArgumentException>(badId);
+        Assert.Null(goodError);
     }
 
     [Fact]
     public void Enums_Names_MatchTheBrief()
     {
-        // Act and assert
-        Assert.Equal(["Pickup", "InTransit", "Delivered", "Failed"], Enum.GetNames<ScanType>());
-        Assert.Equal(["Pending", "Synced", "Failed"], Enum.GetNames<SyncStatus>());
+        // Act
+        var scanTypes = Enum.GetNames<ScanType>();
+        var syncStatuses = Enum.GetNames<SyncStatus>();
+
+        // Assert
+        Assert.Equal(["Pickup", "InTransit", "Delivered", "Failed"], scanTypes);
+        Assert.Equal(["Pending", "Synced", "Failed"], syncStatuses);
     }
 }

@@ -67,11 +67,7 @@ public class HarnessAppTests
 
         // Assert
         Assert.Contains("2 scan(s) for APX-00000009, oldest first:", output, StringComparison.Ordinal);
-
-        // Act
         var listing = output[output.IndexOf("2 scan(s) for APX-00000009", StringComparison.Ordinal)..];
-
-        // Assert
         Assert.True(listing.IndexOf("Pickup", StringComparison.Ordinal) < listing.IndexOf("InTransit", StringComparison.Ordinal));
         Assert.DoesNotContain("APX-00000008", listing[..listing.IndexOf("=== ApexPost", StringComparison.Ordinal)], StringComparison.Ordinal);
         Assert.Contains("note: on the road", output, StringComparison.Ordinal);
@@ -227,7 +223,11 @@ public class HarnessAppTests
         output ??= new StringWriter();
         var app = new HarnessApp(db.Database, db.Repository, outbox, input, output, echoInput: true, new SteppingClock());
 
-        Assert.Equal(0, await app.RunAsync());
+        var exitCode = await app.RunAsync();
+        if (exitCode != 0)
+        {
+            throw new InvalidOperationException($"The harness exited with code {exitCode}, not 0.");
+        }
 
         // The listener runs on Couchbase's thread. Wait until it has caught up with the last change before reading the
         // text, instead of sleeping for a fixed time.

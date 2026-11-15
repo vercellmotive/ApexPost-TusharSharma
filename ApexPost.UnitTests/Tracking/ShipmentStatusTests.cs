@@ -73,8 +73,11 @@ public sealed class ShipmentStatusTests
         // Arrange
         var shipment = Make.Shipment();
 
-        // Act and assert
-        Assert.Throws<InvalidOperationException>(() => shipment.MoveTo(ShipmentStatus.Delivered, TestTime.Start));
+        // Act
+        var exception = Record.Exception(() => shipment.MoveTo(ShipmentStatus.Delivered, TestTime.Start));
+
+        // Assert
+        Assert.IsType<InvalidOperationException>(exception);
         Assert.Equal(ShipmentStatus.Created, shipment.Status);
     }
 
@@ -86,9 +89,12 @@ public sealed class ShipmentStatusTests
         // Arrange
         var shipment = Make.ShipmentIn(status);
 
-        // Act and assert
+        // Act
+        var exception = Record.Exception(() => shipment.ReplaceDetails(Make.Recipient("Perth"), 1m, TestTime.Start));
+
+        // Assert
         Assert.True(shipment.IsClosed);
-        Assert.Throws<InvalidOperationException>(() => shipment.ReplaceDetails(Make.Recipient("Perth"), 1m, TestTime.Start));
+        Assert.IsType<InvalidOperationException>(exception);
         Assert.Equal("Sydney", shipment.City);
     }
 

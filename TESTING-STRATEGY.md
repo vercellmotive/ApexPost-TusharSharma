@@ -62,7 +62,14 @@ Moq is used for interaction-based isolation (`Setup`, `ReturnsAsync`, `It.Is`, `
 
 ## 4. Review of the existing tests
 
-Every existing test class was reviewed against the risk map and the rules in section 7. "Kept" means the tests stay as they were apart from the move to the new project and namespace. "Modified" says what changed. Every test method in every kept or modified class was renamed to the `Method_Scenario_ExpectedResult` convention and checked for the AAA layout; that is not repeated in each row. The renaming took two passes. The second pass, after the merge, caught 181 names that still had only two parts, and [`docs/week5/test-renames.md`](docs/week5/test-renames.md) lists each old and new name. No test was deleted without a reason in this table.
+Every existing test class was reviewed against the risk map and the rules in section 7. "Kept" means the tests stay as they were apart from the move to the new project and namespace. "Modified" says what changed. Every test method in every kept or modified class was renamed to the `Method_Scenario_ExpectedResult` convention and checked for the AAA layout; that is not repeated in each row. The renaming took two passes. The second pass, after the merge, caught 181 names that still had only two parts, and [`docs/week5/test-renames.md`](docs/week5/test-renames.md) lists each old and new name.
+
+A review of the AAA layout after the merge found 157 tests that did not keep it strictly:
+- some combined Act and Assert in one section;
+- some acted twice, with a second `// Arrange (next step)`;
+- some called a response-checking helper before `// Assert`.
+
+Each of them now has one Act and one Assert. No test was split or dropped, and the counts did not change. The same review renamed three tests whose name parts were in the wrong order. No test was deleted without a reason in this table.
 
 ### Week 3: `ApexPost.Test`
 
@@ -175,7 +182,12 @@ Every existing test class was reviewed against the risk map and the rules in sec
   - The first part is what the test exercises: a method, an HTTP action for the web tests (`PostCounterCreate`, `GetParcelStatus`), or the subject of a test that checks a whole model or layer (`Model`, `SourceFiles`).
   - The second part is the situation, and the third is the expected result.
   - Every one of the 464 test methods has all three parts. No name has only two, and none splits the result with an extra `_And…` part.
-- **AAA:** every test has `// Arrange`, `// Act` and `// Assert` sections, in that order. A test that checks an exception uses `// Act` with a delegate and asserts in `// Assert`. Where nothing needs arranging the section is left out.
+- **AAA:** every test has one `// Act` and one `// Assert` section, in that order, after an `// Arrange` section when there is something to set up. Nothing before `// Assert` asserts.
+  - **Exceptions.** When only the exception matters, `// Act` holds the call as a delegate (`Action act = () => …;`) and `// Assert` runs `Assert.Throws<T>(act)`. When the state after the failure matters too, for example that no stock moved, `// Act` makes the call through `Record.Exception` or `Record.ExceptionAsync`, and `// Assert` checks the exception type and then the state.
+  - **Several calls.** When a test compares related calls, such as each role against the same endpoint, `// Act` makes all of them and keeps each result in a named variable, and `// Assert` checks them all.
+  - **Journeys.** When a later step depends on an earlier one, such as a sale before a void, the earlier steps run in `// Arrange`. Any result the test still checks is kept in a variable and asserted in `// Assert`.
+  - **Helpers.** Helpers that only set a test up (`SignInAsync`, `TokenFrom`, `CreateShipmentAsync`, the harness's `RunAsync`) throw on a broken setup and never assert. Helpers that check a response (`ReadProblem`, `ReadValidationErrors`, `AssertProblemAsync`) are called only in `// Assert`.
+  - **Checked automatically.** `python3 tools/check-test-conventions.py` checks the naming and AAA rules for every test and lists any that break them. It reports 464 tests checked and 0 breaking the rules. On the code as first merged it reported 179, which a review after the merge fixed (section 4 and `docs/week5/test-renames.md`).
 - **Deterministic:** no `DateTime.Now` or `DateTimeOffset.UtcNow` in any test project (time comes from `FakeTimeProvider` or fixed dates; tokens expire in 2099 or expired in 2021), no dependence on test order, and no static mutable state (per-test values are derived from the test's name). There are no fixed sleeps: asynchronous work is awaited on the condition the test needs, with a bound that only stops a broken test from hanging. The only real delays left are inside test doubles that play a slow server or a slow courier service, so that Polly's real timeouts and the concurrency limit have something to act on; their margins are ten times or more.
 - **Fictional data only:** tracking numbers `APX-1xxxxxxx`, couriers `CR-1001`, `.example` domains.
 - **No secrets:** signing keys and partner keys are generated per test run. The SQL Server connection string comes only from an environment variable.

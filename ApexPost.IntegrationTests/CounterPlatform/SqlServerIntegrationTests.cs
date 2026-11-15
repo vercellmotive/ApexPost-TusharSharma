@@ -79,15 +79,22 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     [SqlServerFact]
     public async Task Seed_FreshDatabase_MeetsTheRequiredVolumes()
     {
-        // Act
+        // Arrange
         await using var db = database.CreateContext();
 
+        // Act
+        var branches = await db.Branches.CountAsync();
+        var staff = await db.Staff.CountAsync();
+        var products = await db.Products.CountAsync();
+        var zones = await db.ShippingZones.CountAsync();
+        var transactions = await db.CounterTransactions.CountAsync();
+
         // Assert
-        Assert.True(await db.Branches.CountAsync() >= 5);
-        Assert.True(await db.Staff.CountAsync() >= 20);
-        Assert.True(await db.Products.CountAsync() >= 30);
-        Assert.True(await db.ShippingZones.CountAsync() >= 10);
-        Assert.True(await db.CounterTransactions.CountAsync() >= 200);
+        Assert.True(branches >= 5);
+        Assert.True(staff >= 20);
+        Assert.True(products >= 30);
+        Assert.True(zones >= 10);
+        Assert.True(transactions >= 200);
     }
 
     [SqlServerFact]
@@ -163,13 +170,12 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         transaction.Complete("Cash", new Money(1000m));
         new CounterTransactionRepository(db).Add(transaction);
 
-        // Act and assert
-        await Assert.ThrowsAsync<DbUpdateException>(() => new UnitOfWork(db).SaveChangesAsync());
-
         // Act
-        await using var verify = database.CreateContext();
+        var exception = await Record.ExceptionAsync(() => new UnitOfWork(db).SaveChangesAsync());
 
         // Assert
+        Assert.IsType<DbUpdateException>(exception);
+        await using var verify = database.CreateContext();
         Assert.Equal(before, (await verify.BranchStock.AsNoTracking().SingleAsync(row => row.BranchCode == B001 && row.ProductSku == Sku1)).QuantityOnHand);
         Assert.False(await verify.CounterTransactions.AnyAsync(row => row.Id == transaction.Id));
     }
@@ -187,8 +193,11 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         await new UnitOfWork(first).SaveChangesAsync();
         secondStock!.AddStock(1);
 
-        // Act and assert
-        await Assert.ThrowsAsync<ConcurrencyConflictException>(() => new UnitOfWork(second).SaveChangesAsync());
+        // Act
+        Func<Task> act = () => new UnitOfWork(second).SaveChangesAsync();
+
+        // Assert
+        await Assert.ThrowsAsync<ConcurrencyConflictException>(act);
     }
 
     [SqlServerFact]
@@ -198,33 +207,40 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         await using var db = database.CreateContext();
         db.Staff.Add(new Staff { Id = "STF900", Name = "Copy", Email = "alice@apexpost.com", Role = StaffRole.CounterClerk, HomeBranchCode = B001 });
 
-        // Act and assert
-        await Assert.ThrowsAsync<DuplicateValueException>(() => new UnitOfWork(db).SaveChangesAsync());
+        // Act
+        Func<Task> act = () => new UnitOfWork(db).SaveChangesAsync();
+
+        // Assert
+        await Assert.ThrowsAsync<DuplicateValueException>(act);
     }
 
     [SqlServerFact]
     public async Task UniqueConstraints_DuplicateValues_AreRejectedButAStaffEmailCanBeCorrected()
     {
-        // Act and assert
+        // Arrange
+        await using var db = database.CreateContext();
+        var staff = new StaffRepository(db);
         try
         {
-            await using var db = database.CreateContext();
-            var constraints = await db.Database.SqlQuery<string>($"SELECT name AS [Value] FROM sys.key_constraints WHERE type = 'UQ'").ToListAsync();
-            Assert.Contains("UQ_Branches_BranchCode", constraints);
-            Assert.Contains("UQ_Products_Sku", constraints);
-            Assert.Equal(1, await db.Database.SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM sys.indexes WHERE name = 'UQ_Staff_Email' AND is_unique = 1").SingleAsync());
-
-            var staff = new StaffRepository(db);
             staff.Add(new Staff { Id = "STF901", Name = "Temp", Email = "temp.stf901@apexpost.example", Role = StaffRole.CounterClerk, HomeBranchCode = B001 });
             await new UnitOfWork(db).SaveChangesAsync();
-
             var current = (await staff.GetByIdAsync("STF901"))!;
+
+            // Act
+            var constraints = await db.Database.SqlQuery<string>($"SELECT name AS [Value] FROM sys.key_constraints WHERE type = 'UQ'").ToListAsync();
+            var uniqueEmailIndexes = await db.Database.SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM sys.indexes WHERE name = 'UQ_Staff_Email' AND is_unique = 1").SingleAsync();
             staff.Update(new Staff { Id = current.Id, Name = current.Name, Email = "corrected.stf901@apexpost.example", Role = current.Role, HomeBranchCode = current.HomeBranchCode });
             await new UnitOfWork(db).SaveChangesAsync();
-            Assert.Equal("corrected.stf901@apexpost.example", await db.Staff.AsNoTracking().Where(item => item.Id == "STF901").Select(item => item.Email).SingleAsync());
-
+            var savedEmail = await db.Staff.AsNoTracking().Where(item => item.Id == "STF901").Select(item => item.Email).SingleAsync();
             staff.Update(new Staff { Id = current.Id, Name = current.Name, Email = "alice@apexpost.com", Role = current.Role, HomeBranchCode = current.HomeBranchCode });
-            await Assert.ThrowsAsync<DuplicateValueException>(() => new UnitOfWork(db).SaveChangesAsync());
+            var duplicate = await Record.ExceptionAsync(() => new UnitOfWork(db).SaveChangesAsync());
+
+            // Assert
+            Assert.Contains("UQ_Branches_BranchCode", constraints);
+            Assert.Contains("UQ_Products_Sku", constraints);
+            Assert.Equal(1, uniqueEmailIndexes);
+            Assert.Equal("corrected.stf901@apexpost.example", savedEmail);
+            Assert.IsType<DuplicateValueException>(duplicate);
         }
         finally
         {
@@ -236,28 +252,28 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     [SqlServerFact]
     public async Task SaveChangesAsync_NegativeStockOrUnmaskedDocument_IsRejectedByCheckConstraints()
     {
-        // Act
+        // Arrange
         await using var db = database.CreateContext();
+        var verificationsExist = await db.IdentityVerifications.AnyAsync();
+
+        // Act
+        var negativeStock = await Record.ExceptionAsync(() =>
+            db.Database.ExecuteSqlAsync($"UPDATE dbo.BranchStock SET QuantityOnHand = -1 WHERE BranchCode = {"B001"} AND Sku = {"SKU-001"}"));
+        var unmaskedDocument = await Record.ExceptionAsync(() =>
+            db.Database.ExecuteSqlAsync($"UPDATE dbo.IdentityVerifications SET MaskedDocumentNumber = {"A123456789"}"));
 
         // Assert
-        await Assert.ThrowsAsync<SqlException>(() =>
-            db.Database.ExecuteSqlAsync($"UPDATE dbo.BranchStock SET QuantityOnHand = -1 WHERE BranchCode = {"B001"} AND Sku = {"SKU-001"}"));
-
-        Assert.True(await db.IdentityVerifications.AnyAsync());
-        await Assert.ThrowsAsync<SqlException>(() =>
-            db.Database.ExecuteSqlAsync($"UPDATE dbo.IdentityVerifications SET MaskedDocumentNumber = {"A123456789"}"));
+        Assert.IsType<SqlException>(negativeStock);
+        Assert.True(verificationsExist);
+        Assert.IsType<SqlException>(unmaskedDocument);
     }
 
     [SqlServerFact]
     public async Task SaveChangesAsync_NegativeShipmentDimensions_IsRejectedByCheckConstraint()
     {
-        // Act
+        // Arrange
         await using var db = database.CreateContext();
-
-        // Assert
-        Assert.True(await db.Shipments.AnyAsync());
-
-        // Arrange (next step)
+        var shipmentsExist = await db.Shipments.AnyAsync();
         FormattableString[] updates =
         [
             $"UPDATE dbo.Shipments SET LengthCm = {-1m}",
@@ -265,12 +281,20 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
             $"UPDATE dbo.Shipments SET HeightCm = {-1m}"
         ];
 
-        // Act and assert
+        // Act
+        var failures = new List<Exception?>();
         foreach (var update in updates)
         {
-            var failure = await Assert.ThrowsAsync<SqlException>(() => db.Database.ExecuteSqlAsync(update));
-            Assert.Contains("CK_Shipments_Dimensions", failure.Message);
+            failures.Add(await Record.ExceptionAsync(() => db.Database.ExecuteSqlAsync(update)));
         }
+
+        // Assert
+        Assert.True(shipmentsExist);
+        Assert.All(failures, failure =>
+        {
+            var sqlError = Assert.IsType<SqlException>(failure);
+            Assert.Contains("CK_Shipments_Dimensions", sqlError.Message);
+        });
     }
 
     [SqlServerFact]
@@ -295,14 +319,15 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         // Arrange
         await using var db = database.CreateContext();
         var command = new StockAdjustmentCommand(db);
-
-        // Act
         var history = await db.StockAdjustments.CountAsync();
 
-        // Assert
-        await Assert.ThrowsAsync<DomainValidationException>(() => command.AdjustAsync(B001, Sku1, -1000000, StockAdjustmentReason.Damage, "STF001"));
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => command.AdjustAsync(B001, new Sku("SKU-404"), 1, StockAdjustmentReason.Damage, "STF001"));
+        // Act
+        var overdraw = await Record.ExceptionAsync(() => command.AdjustAsync(B001, Sku1, -1000000, StockAdjustmentReason.Damage, "STF001"));
+        var unknownStock = await Record.ExceptionAsync(() => command.AdjustAsync(B001, new Sku("SKU-404"), 1, StockAdjustmentReason.Damage, "STF001"));
 
+        // Assert
+        Assert.IsType<DomainValidationException>(overdraw);
+        Assert.IsType<KeyNotFoundException>(unknownStock);
         Assert.Equal(history, await db.StockAdjustments.CountAsync());
     }
 
@@ -313,17 +338,18 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         await using var db = database.CreateContext();
         var command = new StockAdjustmentCommand(db);
         var quantity = (await db.BranchStock.AsNoTracking().SingleAsync(row => row.BranchCode == B001 && row.ProductSku == Sku1)).QuantityOnHand;
-
-        // Act
         var history = await db.StockAdjustments.CountAsync();
 
-        // Assert
-        foreach (var staffId in new[] { "", "STF999" })
-        {
-            var failure = await Assert.ThrowsAsync<DomainValidationException>(() => command.AdjustAsync(B001, Sku1, 1, StockAdjustmentReason.Damage, staffId));
-            Assert.Contains("not a known staff member", failure.Message);
-        }
+        // Act
+        var blankStaff = await Record.ExceptionAsync(() => command.AdjustAsync(B001, Sku1, 1, StockAdjustmentReason.Damage, ""));
+        var unknownStaff = await Record.ExceptionAsync(() => command.AdjustAsync(B001, Sku1, 1, StockAdjustmentReason.Damage, "STF999"));
 
+        // Assert
+        Assert.All([blankStaff, unknownStaff], failure =>
+        {
+            var validation = Assert.IsType<DomainValidationException>(failure);
+            Assert.Contains("not a known staff member", validation.Message);
+        });
         Assert.Equal(quantity, (await db.BranchStock.AsNoTracking().SingleAsync(row => row.BranchCode == B001 && row.ProductSku == Sku1)).QuantityOnHand);
         Assert.Equal(history, await db.StockAdjustments.CountAsync());
     }
@@ -337,27 +363,21 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
 
         // Act
         var date = (await reports.GetLatestSalesDateAsync("B001"))!.Value;
+        var daily = await reports.GetDailyBranchSalesAsync("B001", date);
+        var lowStock = await reports.GetLowStockAsync("B001", 5);
+        var allStock = await reports.GetLowStockAsync(null, 1000000);
 
         // Assert
-        var row = Assert.Single(await reports.GetDailyBranchSalesAsync("B001", date));
-
-        // Act
+        var row = Assert.Single(daily);
         var expectedRetail = await db.TransactionLines
             .Where(line => line.LineType == LineItemType.RetailProduct
                 && line.Transaction!.BranchCode == B001
                 && line.Transaction.BusinessDate == date
                 && line.Transaction.Status == TransactionStatus.Paid)
             .SumAsync(line => line.LineTotal);
-
-        // Assert
         Assert.Equal(expectedRetail, row.RetailTotal);
-
-        // Act
-        var lowStock = await reports.GetLowStockAsync("B001", 5);
-
-        // Assert
         Assert.All(lowStock, item => Assert.True(item.QuantityOnHand <= 5));
-        Assert.All(await reports.GetLowStockAsync(null, 1000000), item => Assert.False(string.IsNullOrEmpty(item.ProductName)));
+        Assert.All(allStock, item => Assert.False(string.IsNullOrEmpty(item.ProductName)));
     }
 
     [SqlServerFact]
@@ -379,30 +399,32 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         }
 
         await RunAsync(connection, "IF DATABASE_PRINCIPAL_ID('apexpost_test') IS NULL CREATE USER apexpost_test WITHOUT LOGIN; ALTER ROLE apexpost_app ADD MEMBER apexpost_test;");
+        string[] allowed =
+        [
+            "SELECT TOP (1) * FROM dbo.Branches;",
+            "EXEC dbo.usp_LowStockReport @BranchCode = 'B001', @Threshold = 5;",
+            "EXEC dbo.usp_DailyBranchSales @BranchCode = 'B001', @Date = '20260101';",
+            "BEGIN TRAN; UPDATE dbo.BranchStock SET QuantityOnHand = QuantityOnHand WHERE BranchCode = 'B001'; INSERT dbo.AuditEntries (Id, CorrelationId, StaffId, Role, BranchCode, Controller, Action, Parameters, StatusCode, DurationMs) VALUES (NEWID(), 'c', 's', 'r', 'b', 'c', 'a', '{}', 200, 1); ROLLBACK;",
+        ];
+        string[] forbidden =
+        [
+            "DELETE FROM dbo.AuditEntries;",
+            "UPDATE dbo.AuditEntries SET StatusCode = 0;",
+            "DELETE FROM dbo.Products;",
+            "ALTER TABLE dbo.Products ADD Hacked int NULL;",
+            "CREATE TABLE dbo.Hacked (Id int);",
+        ];
 
-        // Act
         await RunAsync(connection, "EXECUTE AS USER = 'apexpost_test';");
-
-        // Assert
         try
         {
-            await RunAsync(connection, "SELECT TOP (1) * FROM dbo.Branches;");
-            await RunAsync(connection, "EXEC dbo.usp_LowStockReport @BranchCode = 'B001', @Threshold = 5;");
-            await RunAsync(connection, "EXEC dbo.usp_DailyBranchSales @BranchCode = 'B001', @Date = '20260101';");
-            await RunAsync(connection, "BEGIN TRAN; UPDATE dbo.BranchStock SET QuantityOnHand = QuantityOnHand WHERE BranchCode = 'B001'; INSERT dbo.AuditEntries (Id, CorrelationId, StaffId, Role, BranchCode, Controller, Action, Parameters, StatusCode, DurationMs) VALUES (NEWID(), 'c', 's', 'r', 'b', 'c', 'a', '{}', 200, 1); ROLLBACK;");
+            // Act
+            var allowedErrors = await RunEachAsync(connection, allowed);
+            var forbiddenErrors = await RunEachAsync(connection, forbidden);
 
-            foreach (var forbidden in new[]
-            {
-                "DELETE FROM dbo.AuditEntries;",
-                "UPDATE dbo.AuditEntries SET StatusCode = 0;",
-                "DELETE FROM dbo.Products;",
-                "ALTER TABLE dbo.Products ADD Hacked int NULL;",
-                "CREATE TABLE dbo.Hacked (Id int);"
-            })
-            {
-                var denied = await Assert.ThrowsAsync<SqlException>(() => RunAsync(connection, forbidden));
-                Assert.Contains(denied.Number, new[] { 229, 262, 1088, 15151, 3701 });
-            }
+            // Assert
+            Assert.All(allowedErrors, Assert.Null);
+            Assert.All(forbiddenErrors, error => Assert.Contains(Assert.IsType<SqlException>(error).Number, new[] { 229, 262, 1088, 15151, 3701 }));
         }
         finally
         {
@@ -429,28 +451,30 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         }
 
         await RunAsync(connection, "IF DATABASE_PRINCIPAL_ID('apexpost_report_test') IS NULL CREATE USER apexpost_report_test WITHOUT LOGIN; ALTER ROLE apexpost_reports ADD MEMBER apexpost_report_test;");
+        string[] allowed =
+        [
+            "EXEC dbo.usp_LowStockReport @BranchCode = 'B001', @Threshold = 5;",
+            "EXEC dbo.usp_DailyBranchSales @BranchCode = 'B001', @Date = '20260101';",
+        ];
+        string[] forbidden =
+        [
+            "SELECT TOP (1) Sender FROM dbo.MoneyOrders;",
+            "SELECT TOP (1) Email FROM dbo.Staff;",
+            "SELECT TOP (1) MaskedDocumentNumber FROM dbo.IdentityVerifications;",
+            "SELECT TOP (1) LineTotal FROM dbo.TransactionLines;",
+            "EXEC dbo.usp_AdjustStock @BranchCode = 'B001', @Sku = 'SKU-001', @Delta = 1, @Reason = 'Damage', @ChangedBy = 'STF001';",
+        ];
 
-        // Act
         await RunAsync(connection, "EXECUTE AS USER = 'apexpost_report_test';");
-
-        // Assert
         try
         {
-            await RunAsync(connection, "EXEC dbo.usp_LowStockReport @BranchCode = 'B001', @Threshold = 5;");
-            await RunAsync(connection, "EXEC dbo.usp_DailyBranchSales @BranchCode = 'B001', @Date = '20260101';");
+            // Act
+            var allowedErrors = await RunEachAsync(connection, allowed);
+            var forbiddenErrors = await RunEachAsync(connection, forbidden);
 
-            foreach (var forbidden in new[]
-            {
-                "SELECT TOP (1) Sender FROM dbo.MoneyOrders;",
-                "SELECT TOP (1) Email FROM dbo.Staff;",
-                "SELECT TOP (1) MaskedDocumentNumber FROM dbo.IdentityVerifications;",
-                "SELECT TOP (1) LineTotal FROM dbo.TransactionLines;",
-                "EXEC dbo.usp_AdjustStock @BranchCode = 'B001', @Sku = 'SKU-001', @Delta = 1, @Reason = 'Damage', @ChangedBy = 'STF001';"
-            })
-            {
-                var denied = await Assert.ThrowsAsync<SqlException>(() => RunAsync(connection, forbidden));
-                Assert.Contains(denied.Number, new[] { 229, 230 });
-            }
+            // Assert
+            Assert.All(allowedErrors, Assert.Null);
+            Assert.All(forbiddenErrors, error => Assert.Contains(Assert.IsType<SqlException>(error).Number, new[] { 229, 230 }));
         }
         finally
         {
@@ -481,22 +505,16 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         await new SqlCommand(second, victim, victimTransaction).ExecuteNonQueryAsync();
         var survivorWaits = new SqlCommand(second, survivor, survivorTransaction).ExecuteNonQueryAsync();
 
-        // Act and assert
-        var failure = await Assert.ThrowsAsync<SqlException>(() => new SqlCommand(first, victim, victimTransaction).ExecuteNonQueryAsync());
-
-        // Arrange (next step)
-        await survivorWaits;
-
         // Act
+        // The victim now waits for the survivor's row while the survivor waits for the victim's: a deadlock.
+        var exception = await Record.ExceptionAsync(() => new SqlCommand(first, victim, victimTransaction).ExecuteNonQueryAsync());
+        await survivorWaits;
         await survivorTransaction.RollbackAsync();
 
         // Assert
+        var failure = Assert.IsType<SqlException>(exception);
         Assert.Equal(1205, failure.Number);
-
-        // Act
         await using var after = database.CreateContext();
-
-        // Assert
         Assert.True(new RetryProbe(after).Retries(failure));
         Assert.Equal(quantityBefore, await after.BranchStock.AsNoTracking()
             .Where(stock => stock.BranchCode == B001 && stock.ProductSku == new Sku("SKU-002"))
@@ -514,6 +532,18 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     {
         await using var command = new SqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();
+    }
+
+    // Runs each statement in turn and records what it threw, or null, so the test can assert on every outcome.
+    private static async Task<List<Exception?>> RunEachAsync(SqlConnection connection, IEnumerable<string> statements)
+    {
+        var errors = new List<Exception?>();
+        foreach (var sql in statements)
+        {
+            errors.Add(await Record.ExceptionAsync(() => RunAsync(connection, sql)));
+        }
+
+        return errors;
     }
 
     [SqlServerFact]
@@ -538,14 +568,14 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     {
         // Arrange
         await using var db = database.CreateContext();
-
-        // Act
         var before = await db.Products.AsNoTracking().OrderBy(product => product.Id).Select(product => product.UnitPrice).ToListAsync();
 
-        // Assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             new PriceRevisionCommand(db).ReviseByCategoryAsync(ProductCategories.OfficeSupplies, -99.99m));
 
+        // Assert
+        Assert.IsType<DomainValidationException>(exception);
         Assert.Equal(before, await db.Products.AsNoTracking().OrderBy(product => product.Id).Select(product => product.UnitPrice).ToListAsync());
     }
 
@@ -554,34 +584,34 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
     {
         // Arrange
         var id = Guid.NewGuid();
+        var transaction = new Transaction { Id = id, BranchCode = B001, CounterId = "C01", ClerkStaffId = "STF002", BusinessDate = new DateOnly(2026, 10, 2) };
+        transaction.AddIdentityVerification(IdVerificationDetails.FromDocumentNumber(DocumentType.Passport, "PA1234567", true));
+        transaction.Complete("Cash", new Money(1000m));
+        await using var saleContext = database.CreateContext();
+        await using var db = database.CreateContext();
 
         // Act
-        await using (var db = database.CreateContext())
-        {
-            var transaction = new Transaction { Id = id, BranchCode = B001, CounterId = "C01", ClerkStaffId = "STF002", BusinessDate = new DateOnly(2026, 10, 2) };
-            transaction.AddIdentityVerification(IdVerificationDetails.FromDocumentNumber(DocumentType.Passport, "PA1234567", true));
-            transaction.Complete("Cash", new Money(1000m));
-            new CounterTransactionRepository(db).Add(transaction);
-            await new UnitOfWork(db).SaveChangesAsync();
-        }
+        // Save the free identity check, void it in a fresh context, then try to record a zero payment against it.
+        new CounterTransactionRepository(saleContext).Add(transaction);
+        await new UnitOfWork(saleContext).SaveChangesAsync();
+        var paymentsAfterSale = await db.Payments.CountAsync(payment => payment.TransactionId == id);
+        var restored = (await new CounterTransactionRepository(db).GetByIdAsync(id))!;
+        var statusAfterSale = restored.Status;
+        restored.Void((await new StaffRepository(db).GetByIdAsync("STF001"))!, "Test void");
+        new CounterTransactionRepository(db).Update(restored);
+        await new UnitOfWork(db).SaveChangesAsync();
+        var paymentsAfterVoid = await db.Payments.CountAsync(payment => payment.TransactionId == id);
+        var statusAfterVoid = (await db.CounterTransactions.AsNoTracking().SingleAsync(row => row.Id == id)).Status;
+        var zeroPayment = await Record.ExceptionAsync(() => db.Database.ExecuteSqlAsync(
+            $"INSERT INTO dbo.Payments (Id, TransactionId, Kind, Method, Amount) VALUES ({Guid.NewGuid()}, {id}, {"Sale"}, {"Cash"}, {0m})"));
 
         // Assert
-        await using (var db = database.CreateContext())
-        {
-            Assert.Equal(0, await db.Payments.CountAsync(payment => payment.TransactionId == id));
-            var restored = await new CounterTransactionRepository(db).GetByIdAsync(id);
-            Assert.Equal(TransactionStatus.Paid, restored!.Status);
-
-            restored.Void((await new StaffRepository(db).GetByIdAsync("STF001"))!, "Test void");
-            new CounterTransactionRepository(db).Update(restored);
-            await new UnitOfWork(db).SaveChangesAsync();
-            Assert.Equal(0, await db.Payments.CountAsync(payment => payment.TransactionId == id));
-            Assert.Equal(TransactionStatus.Voided, (await db.CounterTransactions.AsNoTracking().SingleAsync(row => row.Id == id)).Status);
-
-            var failure = await Assert.ThrowsAsync<SqlException>(() => db.Database.ExecuteSqlAsync(
-                $"INSERT INTO dbo.Payments (Id, TransactionId, Kind, Method, Amount) VALUES ({Guid.NewGuid()}, {id}, {"Sale"}, {"Cash"}, {0m})"));
-            Assert.Contains("CK_Payments_Amount", failure.Message);
-        }
+        Assert.Equal(0, paymentsAfterSale);
+        Assert.Equal(TransactionStatus.Paid, statusAfterSale);
+        Assert.Equal(0, paymentsAfterVoid);
+        Assert.Equal(TransactionStatus.Voided, statusAfterVoid);
+        var failure = Assert.IsType<SqlException>(zeroPayment);
+        Assert.Contains("CK_Payments_Amount", failure.Message);
     }
 
     [SqlServerFact]
@@ -592,33 +622,24 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         await using var db = database.CreateContext(counter);
         var queries = new ScreenQueries(db);
 
-        counter.Reset();
-
         // Act
+        // Each screen query is counted on its own.
+        counter.Reset();
         var transactions = await queries.GetBranchTransactionsAsync("B001", 200);
+        var transactionCommands = counter.Commands;
+        counter.Reset();
+        var catalogue = await queries.GetBranchCatalogueAsync("B001");
+        var catalogueCommands = counter.Commands;
+        counter.Reset();
+        await queries.GetBranchesAsync();
+        var branchCommands = counter.Commands;
 
         // Assert
         Assert.True(transactions.Count > 1);
-        Assert.Equal(1, counter.Commands);
-
-        // Arrange (next step)
-        counter.Reset();
-
-        // Act
-        var catalogue = await queries.GetBranchCatalogueAsync("B001");
-
-        // Assert
+        Assert.Equal(1, transactionCommands);
         Assert.True(catalogue.Count >= 30);
-        Assert.Equal(1, counter.Commands);
-
-        // Arrange (next step)
-        counter.Reset();
-
-        // Act
-        await queries.GetBranchesAsync();
-
-        // Assert
-        Assert.True(counter.Commands <= 2, $"Expected at most 2 commands but saw {counter.Commands}.");
+        Assert.Equal(1, catalogueCommands);
+        Assert.True(branchCommands <= 2, $"Expected at most 2 commands but saw {branchCommands}.");
     }
 
     [SqlServerFact]
@@ -663,20 +684,8 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
             ["PaymentMethod"] = "Card",
             ["__RequestVerificationToken"] = token
         }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, sale.StatusCode);
-
-        // Arrange (next step)
         await using var verify = database.CreateContext();
-
-        // Act
         var saved = await verify.CounterTransactions.AsNoTracking().OrderByDescending(row => row.OccurredAtUtc).FirstAsync();
-
-        // Assert
-        Assert.Equal(TransactionStatus.Paid, saved.Status);
-
-        // Act
         var denied = await client.PostAsync("/Counter/Void", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["transactionId"] = saved.Id.ToString(),
@@ -685,6 +694,8 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         }));
 
         // Assert
+        Assert.Equal(HttpStatusCode.Redirect, sale.StatusCode);
+        Assert.Equal(TransactionStatus.Paid, saved.Status);
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
         Assert.Contains(await factory.ReadAuditAsync(), entry => entry.Action == "Create" && entry.StatusCode == 302);
     }
@@ -724,12 +735,6 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
 
         // Act
         var missingSale = await client.PostAsync("/Counter/Void", VoidForm(Guid.NewGuid(), token));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.NotFound, missingSale.StatusCode);
-        Assert.Equal("application/problem+json", missingSale.Content.Headers.ContentType?.MediaType);
-
-        // Act
         var overdraw = await client.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["productSku"] = sku.Value,
@@ -737,12 +742,6 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
             ["reasonCode"] = "CountCorrection",
             ["__RequestVerificationToken"] = token
         }));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, overdraw.StatusCode);
-        Assert.Equal("application/problem+json", overdraw.Content.Headers.ContentType?.MediaType);
-
-        // Act
         var unknownProduct = await client.PostAsync("/Stock/Adjust", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["productSku"] = "SKU-404",
@@ -752,6 +751,10 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         }));
 
         // Assert
+        Assert.Equal(HttpStatusCode.NotFound, missingSale.StatusCode);
+        Assert.Equal("application/problem+json", missingSale.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.BadRequest, overdraw.StatusCode);
+        Assert.Equal("application/problem+json", overdraw.Content.Headers.ContentType?.MediaType);
         Assert.Equal(HttpStatusCode.NotFound, unknownProduct.StatusCode);
         Assert.Equal("application/problem+json", unknownProduct.Content.Headers.ContentType?.MediaType);
 
@@ -885,14 +888,8 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         using var factory = new SqlServerWebFactory(database.ConnectionString);
         await OpenAllBranchesAsync();
         var (client, token) = await SignInManagerAsync(factory, "127.0.0.40");
-
-        // Act
         var quantityBefore = await StockQuantityAsync(sku);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Counter/Create", SaleForm(sku, token))).StatusCode);
-
-        // Arrange (next step)
+        var sale = await client.PostAsync("/Counter/Create", SaleForm(sku, token));
         var saleId = await LatestSaleIdAsync(sku);
         var historyBefore = await ReturnHistoryCountAsync(sku);
 
@@ -900,17 +897,12 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         var reversal = await client.PostAsync("/Counter/Void", VoidForm(saleId, token));
 
         // Assert
+        Assert.Equal(HttpStatusCode.Redirect, sale.StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, reversal.StatusCode);
         Assert.Equal(quantityBefore, await StockQuantityAsync(sku));
         Assert.Equal(historyBefore + 1, await ReturnHistoryCountAsync(sku));
-
-        // Arrange (next step)
         await using var verify = database.CreateContext();
-
-        // Act
         var saved = await verify.CounterTransactions.AsNoTracking().SingleAsync(row => row.Id == saleId);
-
-        // Assert
         Assert.Equal(TransactionStatus.Voided, saved.Status);
         Assert.True(saved.InventoryRestocked);
     }
@@ -923,14 +915,8 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         var rival = new RivalWriter(database.ConnectionString, "[CounterTransactions] SET", "UPDATE dbo.CounterTransactions SET ModifiedAtUtc = SYSUTCDATETIME() WHERE Status = 'Paid'");
         using var factory = new SqlServerWebFactory(database.ConnectionString, rival);
         await OpenAllBranchesAsync();
-
-        // Act
         var (client, token) = await SignInManagerAsync(factory, "127.0.0.30");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Counter/Create", SaleForm(sku, token))).StatusCode);
-
-        // Arrange (next step)
+        var sale = await client.PostAsync("/Counter/Create", SaleForm(sku, token));
         var saleId = await LatestSaleIdAsync(sku);
         var quantityAfterSale = await StockQuantityAsync(sku);
         var historyBefore = await ReturnHistoryCountAsync(sku);
@@ -939,15 +925,12 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
         var reversal = await client.PostAsync("/Counter/Void", VoidForm(saleId, token));
 
         // Assert
+        Assert.Equal(HttpStatusCode.Redirect, sale.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, reversal.StatusCode);
         Assert.Equal(1, rival.Writes);
         Assert.Equal(quantityAfterSale, await StockQuantityAsync(sku));
         Assert.Equal(historyBefore, await ReturnHistoryCountAsync(sku));
-
-        // Act
         await using var verify = database.CreateContext();
-
-        // Assert
         Assert.Equal(TransactionStatus.Paid, (await verify.CounterTransactions.AsNoTracking().SingleAsync(row => row.Id == saleId)).Status);
     }
 
@@ -1024,7 +1007,10 @@ public sealed class SqlServerIntegrationTests(SqlServerTestDatabase database) : 
             ["Password"] = password,
             ["__RequestVerificationToken"] = token
         }));
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        if (response.StatusCode != HttpStatusCode.Redirect)
+        {
+            throw new InvalidOperationException($"Signing in as {email} returned {response.StatusCode}, not a redirect.");
+        }
     }
 
     private static async Task<string> TokenAsync(HttpClient client, string path) =>

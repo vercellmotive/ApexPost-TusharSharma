@@ -22,10 +22,12 @@ public sealed class TransactionWorkflowTests
         var transaction = CreateTransaction();
         service.AddMoneyOrder(transaction, new Money(1500m), "Sender", "Recipient");
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CompleteWithRetailItemsAsync(transaction, [new RetailItemRequest(new Sku(Sku1), 3)], "Cash"));
 
+        // Assert
+        Assert.IsType<DomainValidationException>(exception);
         Assert.Equal(0, persistence.CommitCount);
         Assert.Equal(10, database.StockOf(Branch, Sku1));
         Assert.Empty(database.AllTransactions());
@@ -37,13 +39,15 @@ public sealed class TransactionWorkflowTests
         // Arrange
         var (database, persistence, service) = Arrange(stock: 10);
 
-        // Act and assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CompleteWithRetailItemsAsync(
                 CreateTransaction(),
                 [new RetailItemRequest(new Sku(Sku1), 3), new RetailItemRequest(new Sku("SKU-404"), 1)],
                 "Cash"));
 
+        // Assert
+        Assert.IsType<KeyNotFoundException>(exception);
         Assert.Equal(0, persistence.CommitCount);
         Assert.Equal(10, database.StockOf(Branch, Sku1));
     }
@@ -54,10 +58,12 @@ public sealed class TransactionWorkflowTests
         // Arrange
         var (database, persistence, service) = Arrange(stock: 2);
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CompleteWithRetailItemsAsync(CreateTransaction(), [new RetailItemRequest(new Sku(Sku1), 3)], "Cash"));
 
+        // Assert
+        Assert.IsType<DomainValidationException>(exception);
         Assert.Equal(0, persistence.CommitCount);
         Assert.Equal(2, database.StockOf(Branch, Sku1));
     }
@@ -69,10 +75,12 @@ public sealed class TransactionWorkflowTests
         var (database, persistence, service) = Arrange(stock: 10);
         persistence.FailNextSaveWith = new IOException("Simulated database failure.");
 
-        // Act and assert
-        await Assert.ThrowsAsync<IOException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CompleteWithRetailItemsAsync(CreateTransaction(), [new RetailItemRequest(new Sku(Sku1), 3)], "Cash"));
 
+        // Assert
+        Assert.IsType<IOException>(exception);
         Assert.Equal(10, database.StockOf(Branch, Sku1));
         Assert.Empty(database.AllTransactions());
     }
@@ -110,14 +118,15 @@ public sealed class TransactionWorkflowTests
             new StubCourierRateService(), new StubCatalogueService(TestProduct()), new StubIdentityVerificationService(),
             new StubEventDispatcher(), new TransactionRules(new Money(1000m), new Money(20000m)));
         await ((IStockRepository)stockRepository).GetManyAsync(new BranchCode(Branch), [new Sku(Sku1)]);
-
-        // Act
         // A second clerk takes the last unit after the first clerk has read it.
         await service.CompleteWithRetailItemsAsync(CreateTransaction(), [new RetailItemRequest(new Sku(Sku1), 1)], "Cash");
 
-        // Assert
-        await Assert.ThrowsAnyAsync<Exception>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             first.CompleteWithRetailItemsAsync(CreateTransaction(), [new RetailItemRequest(new Sku(Sku1), 1)], "Cash"));
+
+        // Assert
+        Assert.NotNull(exception);
         Assert.Equal(0, database.StockOf(Branch, Sku1));
         Assert.Single(database.AllTransactions());
     }
@@ -130,9 +139,12 @@ public sealed class TransactionWorkflowTests
         await ((IStockRepository)persistence).GetManyAsync(new BranchCode(Branch), [new Sku(Sku1)]);
         database.SimulateConcurrentStockChange(Branch, Sku1, 4);
 
-        // Act and assert
-        await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CompleteWithRetailItemsAsync(CreateTransaction(), [new RetailItemRequest(new Sku(Sku1), 1)], "Cash"));
+
+        // Assert
+        Assert.IsType<ConcurrencyConflictException>(exception);
         Assert.Empty(database.AllTransactions());
         Assert.Equal(4, database.StockOf(Branch, Sku1));
     }
@@ -165,10 +177,12 @@ public sealed class TransactionWorkflowTests
         persistence.FailNextSaveWith = new ConcurrencyConflictException("Lost the race.");
         database.SimulateConcurrentStockChange(Branch, Sku1, 0);
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CheckoutAsync(Branch, "STF001", OneUnitSale(), Guid.NewGuid()));
 
+        // Assert
+        Assert.IsType<DomainValidationException>(exception);
         Assert.Equal(0, database.StockOf(Branch, Sku1));
         Assert.Empty(database.AllTransactions());
     }
@@ -184,10 +198,12 @@ public sealed class TransactionWorkflowTests
             new StubCourierRateService(), new StubCatalogueService(TestProduct()), new StubIdentityVerificationService(),
             new StubEventDispatcher(), new TransactionRules(new Money(1000m), new Money(20000m)));
 
-        // Act and assert
-        await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CheckoutAsync(Branch, "STF001", OneUnitSale(), Guid.NewGuid()));
 
+        // Assert
+        Assert.IsType<ConcurrencyConflictException>(exception);
         Assert.Equal(5, conflicting.Saves);
         Assert.Equal(5, database.StockOf(Branch, Sku1));
     }
@@ -195,12 +211,18 @@ public sealed class TransactionWorkflowTests
     [Fact]
     public void RequiresVerification_AmountAtOrAboveTheThreshold_IsTrueOnlyAbove()
     {
-        // Act
+        // Arrange
         var threshold = new Money(1000m);
+        var atThreshold = new MoneyOrderDetails(new Money(1000m), "A", "B", new Money(10m));
+        var oneCentAbove = new MoneyOrderDetails(new Money(1000.01m), "A", "B", new Money(10m));
+
+        // Act
+        var atThresholdNeedsId = atThreshold.RequiresVerification(threshold);
+        var oneCentAboveNeedsId = oneCentAbove.RequiresVerification(threshold);
 
         // Assert
-        Assert.False(new MoneyOrderDetails(new Money(1000m), "A", "B", new Money(10m)).RequiresVerification(threshold));
-        Assert.True(new MoneyOrderDetails(new Money(1000.01m), "A", "B", new Money(10m)).RequiresVerification(threshold));
+        Assert.False(atThresholdNeedsId);
+        Assert.True(oneCentAboveNeedsId);
     }
 
     [Fact]
@@ -209,31 +231,21 @@ public sealed class TransactionWorkflowTests
         // Arrange
         var (database, persistence, service) = Arrange(stock: 10, manager: true);
         var transaction = CreateTransaction();
-
-        // Act
         await service.CompleteWithRetailItemsAsync(transaction, [new RetailItemRequest(new Sku(Sku1), 3)], "Card");
-
-        // Assert
-        Assert.Equal(7, database.StockOf(Branch, Sku1));
-
-        // Arrange (next step)
+        var stockAfterSale = database.StockOf(Branch, Sku1);
         var commitsBefore = persistence.CommitCount;
 
         // Act
         await service.RefundAsync(transaction.Id, "STF009", "Customer returned goods");
+        var repeat = await Record.ExceptionAsync(() => service.RefundAsync(transaction.Id, "STF009", "Duplicate request"));
 
         // Assert
+        Assert.Equal(7, stockAfterSale);
         Assert.Equal(commitsBefore + 1, persistence.CommitCount);
-
-        // Arrange (next step)
         var saved = database.TransactionById(transaction.Id);
-
-        // Act and assert
         Assert.Equal(TransactionStatus.Refunded, saved.Status);
         Assert.True(saved.InventoryRestocked);
-        Assert.Equal(10, database.StockOf(Branch, Sku1));
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.RefundAsync(transaction.Id, "STF009", "Duplicate request"));
+        Assert.IsType<DomainValidationException>(repeat);
         Assert.Equal(10, database.StockOf(Branch, Sku1));
     }
 
@@ -262,10 +274,12 @@ public sealed class TransactionWorkflowTests
         await service.CompleteWithRetailItemsAsync(transaction, [new RetailItemRequest(new Sku(Sku1), 2)], "Cash");
         var commitsBefore = persistence.CommitCount;
 
-        // Act and assert
-        await Assert.ThrowsAsync<UnauthorizedDomainActionException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.VoidAsync(transaction.Id, "STF001", "Not allowed"));
 
+        // Assert
+        Assert.IsType<UnauthorizedDomainActionException>(exception);
         Assert.Equal(commitsBefore, persistence.CommitCount);
         Assert.Equal(TransactionStatus.Paid, database.TransactionById(transaction.Id).Status);
         Assert.Equal(4, database.StockOf(Branch, Sku1));
@@ -280,15 +294,18 @@ public sealed class TransactionWorkflowTests
 
         // Act
         var updated = await inventory.AdjustStockAsync("STF009", new BranchCode(Branch), new Sku(Sku1), -3, StockAdjustmentReason.Damage);
+        var overdraw = await Record.ExceptionAsync(() =>
+            inventory.AdjustStockAsync("STF009", new BranchCode(Branch), new Sku(Sku1), -8, StockAdjustmentReason.Damage));
+        var otherBranch = await Record.ExceptionAsync(() =>
+            inventory.AdjustStockAsync("STF009", new BranchCode("B002"), new Sku(Sku1), 1, StockAdjustmentReason.Replenishment));
+        var byClerk = await Record.ExceptionAsync(() =>
+            inventory.AdjustStockAsync("STF001", new BranchCode(Branch), new Sku(Sku1), 1, StockAdjustmentReason.Replenishment));
 
         // Assert
         Assert.Equal(7, updated);
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            inventory.AdjustStockAsync("STF009", new BranchCode(Branch), new Sku(Sku1), -8, StockAdjustmentReason.Damage));
-        await Assert.ThrowsAsync<UnauthorizedDomainActionException>(() =>
-            inventory.AdjustStockAsync("STF009", new BranchCode("B002"), new Sku(Sku1), 1, StockAdjustmentReason.Replenishment));
-        await Assert.ThrowsAsync<UnauthorizedDomainActionException>(() =>
-            inventory.AdjustStockAsync("STF001", new BranchCode(Branch), new Sku(Sku1), 1, StockAdjustmentReason.Replenishment));
+        Assert.IsType<DomainValidationException>(overdraw);
+        Assert.IsType<UnauthorizedDomainActionException>(otherBranch);
+        Assert.IsType<UnauthorizedDomainActionException>(byClerk);
         Assert.Equal(7, database.StockOf(Branch, Sku1));
     }
 
@@ -328,8 +345,8 @@ public sealed class TransactionWorkflowTests
         // Arrange
         var (_, persistence, service) = Arrange(stock: 10);
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.CheckoutAsync(
+        // Act
+        var exception = await Record.ExceptionAsync(() => service.CheckoutAsync(
             Branch,
             "STF001",
             new CounterCheckoutRequest(
@@ -342,6 +359,9 @@ public sealed class TransactionWorkflowTests
                 null,
                 "Cash"),
             Guid.NewGuid()));
+
+        // Assert
+        Assert.IsType<DomainValidationException>(exception);
         Assert.Equal(0, persistence.CommitCount);
     }
 
@@ -365,9 +385,12 @@ public sealed class TransactionWorkflowTests
         // Arrange
         var (_, persistence, service) = Arrange(stock: 10);
 
-        // Act and assert
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
+        // Act
+        var exception = await Record.ExceptionAsync(() =>
             service.CheckoutAsync(Branch, "STF001", MoneyOrderCheckout(1000.01m), Guid.NewGuid()));
+
+        // Assert
+        Assert.IsType<DomainValidationException>(exception);
         Assert.Equal(0, persistence.CommitCount);
     }
 

@@ -38,23 +38,17 @@ public sealed class VersioningTests : IDisposable
     [Fact]
     public async Task GetShipmentV2_Known_ReturnsNestedRecipientLatestScanAndNamedStatus()
     {
-        // Arrange
+        // Act
         var body = await _client.GetFromJsonAsync<JsonElement>("/api/v2/shipments/APX-10000001");
 
-        // Act
-        var recipient = body.GetProperty("recipient");
-
         // Assert
+        var recipient = body.GetProperty("recipient");
         Assert.Equal("Mia Fictional", recipient.GetProperty("name").GetString());
         Assert.Equal("+61 2 5550 1234", recipient.GetProperty("phone").GetString());
         Assert.Equal("12 Example Lane", recipient.GetProperty("address").GetString());
         Assert.Equal("Sydney", recipient.GetProperty("city").GetString());
         Assert.Equal("InTransit", body.GetProperty("status").GetString());
-
-        // Act
         var latest = body.GetProperty("latestScan");
-
-        // Assert
         Assert.Equal("InTransit", latest.GetProperty("scanType").GetString());
         Assert.Equal("Sydney hub", latest.GetProperty("location").GetString());
         Assert.Equal(TestTime.Start.AddMinutes(20), latest.GetProperty("scannedAtUtc").GetDateTimeOffset());

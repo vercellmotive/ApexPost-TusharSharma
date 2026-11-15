@@ -52,14 +52,8 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
         // Assert
         Assert.Equal(expectedStatus, context.Response.StatusCode);
         Assert.Equal("application/problem+json", context.Response.ContentType);
-
-        // Arrange (next step)
         context.Response.Body.Position = 0;
-
-        // Act
         var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
-
-        // Assert
         Assert.Contains($"\"status\":{expectedStatus}", body);
         Assert.Contains("traceId", body);
         Assert.DoesNotContain("Secret internal detail", body);
@@ -87,11 +81,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
         // Assert
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-
-        // Act
         var audit = await factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
-
-        // Assert
         Assert.Contains(audit, entry => entry.Action == "Create" && entry.StatusCode == StatusCodes.Status409Conflict);
     }
 
@@ -122,11 +112,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
 
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-
-        // Act
         var created = _factory.Database.AllTransactions().Last();
-
-        // Assert
         Assert.NotEqual(postedId, created.Id);
         Assert.Equal(TransactionStatus.Paid, created.Status);
         Assert.Equal("STF003", created.ClerkStaffId);
@@ -158,11 +144,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
 
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-
-        // Act
         var after = _factory.Database.StaffById("STF016");
-
-        // Assert
         Assert.True(after.IsActive);
         Assert.Equal(before.PasswordHash, after.PasswordHash);
         Assert.DoesNotContain(_factory.Database.AllStaff(), person => person.Id == "STF999");
@@ -216,11 +198,7 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
         // Assert
         // Alice is a manager at B001, so the sale goes through and only the fee counts as revenue.
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-
-        // Act
         var after = (await reports.GetDailyBranchSalesAsync("B001", today)).Single().ServicesTotal;
-
-        // Assert
         Assert.Equal(before + 10m, after);
     }
 
@@ -231,19 +209,8 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
         var client = CreateClient(_factory);
         await LoginAsync(client, "alice@apexpost.com", DemoStaff.PasswordFor("alice@apexpost.com"));
         var token = await GetTokenAsync(client, "/Counter");
-
         var unknownId = Guid.NewGuid();
-
-        // Act and assert
-        await AssertProblemAsync(await client.PostAsync("/Counter/Void", ReversalForm(unknownId, token)), HttpStatusCode.NotFound);
-        await AssertProblemAsync(await client.PostAsync("/Counter/Refund", ReversalForm(unknownId, token)), HttpStatusCode.NotFound);
-        await AssertProblemAsync(await client.PostAsync("/Stock/Adjust", StockForm("SKU-001", -1000000, token)), HttpStatusCode.BadRequest);
-        await AssertProblemAsync(await client.PostAsync("/Stock/Adjust", StockForm("SKU-404", 1, token)), HttpStatusCode.NotFound);
-
-        // Arrange (next step)
         var known = _factory.Database.AllTransactions().Select(transaction => transaction.Id).ToHashSet();
-
-        // Act
         var sale = await client.PostAsync("/Counter/Create", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["CounterId"] = "C01",
@@ -252,22 +219,27 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
             ["PaymentMethod"] = "Cash",
             ["__RequestVerificationToken"] = token
         }));
+        var saleId = _factory.Database.AllTransactions().Single(transaction => !known.Contains(transaction.Id)).Id;
+
+        // Act
+        var voidUnknown = await client.PostAsync("/Counter/Void", ReversalForm(unknownId, token));
+        var refundUnknown = await client.PostAsync("/Counter/Refund", ReversalForm(unknownId, token));
+        var overdraw = await client.PostAsync("/Stock/Adjust", StockForm("SKU-001", -1000000, token));
+        var unknownSku = await client.PostAsync("/Stock/Adjust", StockForm("SKU-404", 1, token));
+        var firstVoid = await client.PostAsync("/Counter/Void", ReversalForm(saleId, token));
+        var secondVoid = await client.PostAsync("/Counter/Void", ReversalForm(saleId, token));
+        var refundAfterVoid = await client.PostAsync("/Counter/Refund", ReversalForm(saleId, token));
 
         // Assert
         Assert.Equal(HttpStatusCode.Redirect, sale.StatusCode);
-
-        // Arrange (next step)
-        var saleId = _factory.Database.AllTransactions().Single(transaction => !known.Contains(transaction.Id)).Id;
-
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/Counter/Void", ReversalForm(saleId, token))).StatusCode);
-        await AssertProblemAsync(await client.PostAsync("/Counter/Void", ReversalForm(saleId, token)), HttpStatusCode.BadRequest);
-        await AssertProblemAsync(await client.PostAsync("/Counter/Refund", ReversalForm(saleId, token)), HttpStatusCode.BadRequest);
-
-        // Act
+        await AssertProblemAsync(voidUnknown, HttpStatusCode.NotFound);
+        await AssertProblemAsync(refundUnknown, HttpStatusCode.NotFound);
+        await AssertProblemAsync(overdraw, HttpStatusCode.BadRequest);
+        await AssertProblemAsync(unknownSku, HttpStatusCode.NotFound);
+        Assert.Equal(HttpStatusCode.Redirect, firstVoid.StatusCode);
+        await AssertProblemAsync(secondVoid, HttpStatusCode.BadRequest);
+        await AssertProblemAsync(refundAfterVoid, HttpStatusCode.BadRequest);
         var audit = await _factory.Services.GetRequiredService<IAuditStore>().GetAllAsync();
-
-        // Assert
         Assert.Contains(audit, entry => entry.Action == "Void" && entry.StatusCode == StatusCodes.Status404NotFound);
         Assert.Contains(audit, entry => entry.Action == "Void" && entry.StatusCode == StatusCodes.Status400BadRequest);
     }
@@ -285,12 +257,21 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
             ["__RequestVerificationToken"] = token
         };
 
-        // Act and assert
-        await AssertProblemAsync(await client.PostAsync("/Staff/Deactivate/STF999", new FormUrlEncodedContent(form)), HttpStatusCode.NotFound);
-        await AssertProblemAsync(await client.PostAsync("/Branches/SetStatus/B999", new FormUrlEncodedContent(form)), HttpStatusCode.NotFound);
-        await AssertProblemAsync(await client.GetAsync("/Staff/Edit/STF999"), HttpStatusCode.NotFound);
-        await AssertProblemAsync(await client.GetAsync("/Branches/Edit/B999"), HttpStatusCode.NotFound);
-        await AssertProblemAsync(await client.GetAsync("/Products/Edit/SKU-404"), HttpStatusCode.NotFound);
+        // Act
+        HttpResponseMessage[] responses =
+        [
+            await client.PostAsync("/Staff/Deactivate/STF999", new FormUrlEncodedContent(form)),
+            await client.PostAsync("/Branches/SetStatus/B999", new FormUrlEncodedContent(form)),
+            await client.GetAsync("/Staff/Edit/STF999"),
+            await client.GetAsync("/Branches/Edit/B999"),
+            await client.GetAsync("/Products/Edit/SKU-404"),
+        ];
+
+        // Assert
+        foreach (var response in responses)
+        {
+            await AssertProblemAsync(response, HttpStatusCode.NotFound);
+        }
     }
 
     private static FormUrlEncodedContent ReversalForm(Guid transactionId, string token) => new(new Dictionary<string, string>
@@ -324,39 +305,39 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
         var client = CreateClient(_factory);
         await LoginAsync(client, "ben@apexpost.com", DemoStaff.PasswordFor("ben@apexpost.com"));
         var token = await GetTokenAsync(client, "/Counter");
-        var form = new Dictionary<string, string> { ["TransactionId"] = Guid.NewGuid().ToString(), ["Reason"] = "Check" };
+        var withoutToken = new Dictionary<string, string> { ["TransactionId"] = Guid.NewGuid().ToString(), ["Reason"] = "Check" };
+        var withToken = new Dictionary<string, string>(withoutToken) { ["__RequestVerificationToken"] = token };
 
-        // Act and assert
-        await AssertProblemAsync(await client.PostAsync("/Counter/Void", new FormUrlEncodedContent(form)), HttpStatusCode.BadRequest);
-        await AssertProblemAsync(await client.GetAsync("/No/Such/Page"), HttpStatusCode.NotFound);
+        // Act
+        var missingToken = await client.PostAsync("/Counter/Void", new FormUrlEncodedContent(withoutToken));
+        var unknownPage = await client.GetAsync("/No/Such/Page");
+        // Ben is a counter clerk, so a valid void request is refused by policy.
+        var clerkVoid = await client.PostAsync("/Counter/Void", new FormUrlEncodedContent(withToken));
 
-        // Arrange (next step)
-        form["__RequestVerificationToken"] = token;
-
-        // Act and assert
-        await AssertProblemAsync(await client.PostAsync("/Counter/Void", new FormUrlEncodedContent(form)), HttpStatusCode.Forbidden);
+        // Assert
+        await AssertProblemAsync(missingToken, HttpStatusCode.BadRequest);
+        await AssertProblemAsync(unknownPage, HttpStatusCode.NotFound);
+        await AssertProblemAsync(clerkVoid, HttpStatusCode.Forbidden);
     }
 
     [Fact]
     public async Task GetParcelStatus_MissingOrWrongKey_ReturnsProblemDetails()
     {
         // Arrange
-        var client = CreateClient(_factory, AllowedPartnerIp);
-
-        // Act and assert
-        await AssertProblemAsync(await client.GetAsync("/integration/parcel-status"), HttpStatusCode.Unauthorized);
-
-        // Arrange (next step)
-        client.DefaultRequestHeaders.Add("X-Api-Key", "wrong-key");
-
-        // Act and assert
-        await AssertProblemAsync(await client.GetAsync("/integration/parcel-status"), HttpStatusCode.Unauthorized);
-
-        // Arrange (next step)
+        var noKey = CreateClient(_factory, AllowedPartnerIp);
+        var wrongKey = CreateClient(_factory, AllowedPartnerIp);
+        wrongKey.DefaultRequestHeaders.Add("X-Api-Key", "wrong-key");
         var blocked = CreateClient(_factory, "203.0.113.1");
 
-        // Act and assert
-        await AssertProblemAsync(await blocked.GetAsync("/integration/parcel-status"), HttpStatusCode.Forbidden);
+        // Act
+        var missing = await noKey.GetAsync("/integration/parcel-status");
+        var wrong = await wrongKey.GetAsync("/integration/parcel-status");
+        var fromBlockedAddress = await blocked.GetAsync("/integration/parcel-status");
+
+        // Assert
+        await AssertProblemAsync(missing, HttpStatusCode.Unauthorized);
+        await AssertProblemAsync(wrong, HttpStatusCode.Unauthorized);
+        await AssertProblemAsync(fromBlockedAddress, HttpStatusCode.Forbidden);
     }
 
     [Theory]
@@ -368,8 +349,11 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
         var client = CreateClient(_factory, AllowedPartnerIp);
         client.DefaultRequestHeaders.Add("X-Api-Key", CounterTestSettings.IntegrationKey);
 
-        // Act and assert
-        await AssertProblemAsync(await client.GetAsync("/integration/parcel-status" + query), HttpStatusCode.BadRequest);
+        // Act
+        var response = await client.GetAsync("/integration/parcel-status" + query);
+
+        // Assert
+        await AssertProblemAsync(response, HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -411,7 +395,10 @@ public sealed class ErrorMappingAndOverPostingTests : IClassFixture<ApexPostWebA
             ["Password"] = password,
             ["__RequestVerificationToken"] = token
         }));
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        if (response.StatusCode != HttpStatusCode.Redirect)
+        {
+            throw new InvalidOperationException($"Signing in as {email} returned {response.StatusCode}, not a redirect.");
+        }
     }
 
     private static async Task<string> GetTokenAsync(HttpClient client, string path) =>

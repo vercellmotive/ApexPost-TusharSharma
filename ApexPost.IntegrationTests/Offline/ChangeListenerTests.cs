@@ -63,17 +63,14 @@ public class ChangeListenerTests
         var outbox = new OutboxService(db.Repository, new FakeShipmentUploader());
         db.Repository.Create(Scans.Make("APX-1"));
         db.Repository.Create(Scans.Make("APX-2"));
-
-        // Act
         db.Repository.Create(Scans.Make("APX-3"));
-
-        // Assert
-        Assert.True(Wait.Until(() => db.Database.PendingCount == 3));
+        var countRoseToThree = Wait.Until(() => db.Database.PendingCount == 3);
 
         // Act
         await outbox.SyncPendingAsync();
 
         // Assert
+        Assert.True(countRoseToThree);
         Assert.True(Wait.Until(() => db.Database.PendingCount == 0));
     }
 
@@ -95,16 +92,15 @@ public class ChangeListenerTests
     [Fact]
     public void Listener_OpenThenDispose_IsRegisteredThenRemoved()
     {
-        // Act
+        // Arrange
         using var db = new TestCourierDatabase();
-
-        // Assert
-        Assert.True(db.Database.HasChangeListener);
+        var registeredWhileOpen = db.Database.HasChangeListener;
 
         // Act
         db.Database.Dispose();
 
         // Assert
+        Assert.True(registeredWhileOpen);
         Assert.False(db.Database.HasChangeListener);
     }
 
@@ -114,14 +110,8 @@ public class ChangeListenerTests
         // Arrange
         using var db = new TestCourierDatabase();
         var events = Collect(db);
-
-        // Act
         db.Repository.Create(Scans.Make("APX-1"));
-
-        // Assert
-        Assert.True(Wait.Until(() => events.Count == 1));
-
-        // Arrange (next step)
+        var firstChangeReported = Wait.Until(() => events.Count == 1);
         db.Database.StopListening();
         var seenBySentinel = new System.Collections.Concurrent.ConcurrentBag<string>();
         var sentinel = db.Database.DefaultCollection.AddChangeListener((_, change) =>
@@ -142,6 +132,7 @@ public class ChangeListenerTests
         sentinel.Remove();
 
         // Assert
+        Assert.True(firstChangeReported);
         Assert.True(delivered);
         Assert.Single(events);
         Assert.False(db.Database.HasChangeListener);
@@ -171,8 +162,6 @@ public class ChangeListenerTests
     {
         // Arrange
         using var db = new TestCourierDatabase();
-
-        // Act
         var writer = Task.Run(() =>
         {
             try
@@ -188,22 +177,19 @@ public class ChangeListenerTests
             }
         });
 
-        // Assert
-        Assert.True(Wait.Until(() => db.Database.PendingCount > 5));
-
-        // Arrange (next step)
-        var dispose = Task.Run(db.Database.Dispose);
-
-        // Act and assert
-        Assert.Same(dispose, await Task.WhenAny(dispose, Task.Delay(TimeSpan.FromSeconds(30))));
-
-        // Arrange (next step)
-        await dispose;
+        var changesArriving = Wait.Until(() => db.Database.PendingCount > 5);
 
         // Act
+        var dispose = Task.Run(db.Database.Dispose);
+        // The 30 seconds only stop a hang from blocking the run; a working dispose finishes at once.
+        var firstToFinish = await Task.WhenAny(dispose, Task.Delay(TimeSpan.FromSeconds(30)));
+        var disposeError = firstToFinish == dispose ? await Record.ExceptionAsync(() => dispose) : null;
         await writer;
 
         // Assert
+        Assert.True(changesArriving);
+        Assert.Same(dispose, firstToFinish);
+        Assert.Null(disposeError);
         Assert.True(db.Database.IsDisposed);
         Assert.False(db.Database.HasChangeListener);
     }

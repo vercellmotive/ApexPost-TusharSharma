@@ -106,8 +106,11 @@ public class DocumentModelTests
         broken.SetString("scanType", "Teleported");
         db.Database.DefaultCollection.Save(broken);
 
-        // Act and assert
-        Assert.Throws<InvalidDataException>(() => db.Repository.Get("scan::3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
+        // Act
+        Action act = () => db.Repository.Get("scan::3f2504e0-4f89-11d3-9a0c-0305e82c3301");
+
+        // Assert
+        Assert.Throws<InvalidDataException>(act);
     }
 
     [Fact]

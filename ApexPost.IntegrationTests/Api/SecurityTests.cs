@@ -42,10 +42,13 @@ public sealed class SecurityTests : IDisposable
     {
         // Arrange
         var expired = ApiFactory.Token([ApexPostRoles.Courier], expires: ApiFactory.ExpiredAt);
+        var client = _factory.CreateClient(expired);
 
-        // Act and assert
-        var problem = await ReadProblem(await _factory.CreateClient(expired).GetAsync(Shipment), HttpStatusCode.Unauthorized);
+        // Act
+        var response = await client.GetAsync(Shipment);
 
+        // Assert
+        var problem = await ReadProblem(response, HttpStatusCode.Unauthorized);
         Assert.Contains("expired", problem.GetProperty("detail").GetString());
     }
 
@@ -61,9 +64,14 @@ public sealed class SecurityTests : IDisposable
     [MemberData(nameof(InvalidTokens))]
     public async Task GetShipment_WrongIssuerAudienceOrKey_Returns401(string token)
     {
-        // Act and assert
-        var problem = await ReadProblem(await _factory.CreateClient(token).GetAsync(Shipment), HttpStatusCode.Unauthorized);
+        // Arrange
+        var client = _factory.CreateClient(token);
 
+        // Act
+        var response = await client.GetAsync(Shipment);
+
+        // Assert
+        var problem = await ReadProblem(response, HttpStatusCode.Unauthorized);
         Assert.Equal("The access token is not valid.", problem.GetProperty("detail").GetString());
     }
 
@@ -74,10 +82,15 @@ public sealed class SecurityTests : IDisposable
         var courier = _factory.CreateClient(ApiFactory.Token(ApexPostRoles.Courier));
         var admin = _factory.CreateClient(ApiFactory.Token([ApexPostRoles.Admin], courierId: null));
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.OK, (await courier.GetAsync(Shipment)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/v2/shipments")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"{Shipment}/scans")).StatusCode);
+        // Act
+        var courierRead = await courier.GetAsync(Shipment);
+        var adminList = await admin.GetAsync("/api/v2/shipments");
+        var adminScans = await admin.GetAsync($"{Shipment}/scans");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, courierRead.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, adminList.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, adminScans.StatusCode);
     }
 
     [Fact]
@@ -87,11 +100,14 @@ public sealed class SecurityTests : IDisposable
         var courier = _factory.CreateClient(ApiFactory.Token(ApexPostRoles.Courier));
         var admin = _factory.CreateClient(ApiFactory.Token([ApexPostRoles.Admin], courierId: null));
 
-        // Act and assert
-        var problem = await ReadProblem(await courier.DeleteAsync(Shipment), HttpStatusCode.Forbidden);
+        // Act
+        var courierDelete = await courier.DeleteAsync(Shipment);
+        var adminDelete = await admin.DeleteAsync(Shipment);
 
+        // Assert
+        var problem = await ReadProblem(courierDelete, HttpStatusCode.Forbidden);
         Assert.Equal("Your role does not allow this action.", problem.GetProperty("detail").GetString());
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync(Shipment)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, adminDelete.StatusCode);
     }
 
     [Fact]
@@ -101,13 +117,17 @@ public sealed class SecurityTests : IDisposable
         var admin = _factory.CreateClient(ApiFactory.Token([ApexPostRoles.Admin], courierId: null));
         var courier = _factory.CreateClient(ApiFactory.Token(ApexPostRoles.Courier));
 
-        // Act and assert
-        await ReadProblem(await admin.PatchAsJsonAsync($"{Shipment}/status", new { status = "PickedUp" }), HttpStatusCode.Forbidden);
+        // Act
+        var adminStatus = await admin.PatchAsJsonAsync($"{Shipment}/status", new { status = "PickedUp" });
+        var adminScans = await admin.PostAsJsonAsync($"{Shipment}/scans", ScanBatch(Make.CourierId));
+        var courierStatus = await courier.PatchAsJsonAsync($"{Shipment}/status", new { status = "PickedUp" });
+        var courierScans = await courier.PostAsJsonAsync($"{Shipment}/scans", ScanBatch(Make.CourierId));
 
-        await ReadProblem(await admin.PostAsJsonAsync($"{Shipment}/scans", ScanBatch(Make.CourierId)), HttpStatusCode.Forbidden);
-
-        Assert.Equal(HttpStatusCode.OK, (await courier.PatchAsJsonAsync($"{Shipment}/status", new { status = "PickedUp" })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await courier.PostAsJsonAsync($"{Shipment}/scans", ScanBatch(Make.CourierId))).StatusCode);
+        // Assert
+        await ReadProblem(adminStatus, HttpStatusCode.Forbidden);
+        await ReadProblem(adminScans, HttpStatusCode.Forbidden);
+        Assert.Equal(HttpStatusCode.OK, courierStatus.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, courierScans.StatusCode);
     }
 
     [Fact]
@@ -116,10 +136,13 @@ public sealed class SecurityTests : IDisposable
         // Arrange
         var courier = _factory.CreateClient(ApiFactory.Token(ApexPostRoles.Courier));
 
-        // Act and assert
-        await ReadProblem(await courier.PostAsJsonAsync("/api/v2/shipments", NewShipment()), HttpStatusCode.Forbidden);
+        // Act
+        var create = await courier.PostAsJsonAsync("/api/v2/shipments", NewShipment());
+        var edit = await courier.PutAsJsonAsync(Shipment, NewShipment());
 
-        await ReadProblem(await courier.PutAsJsonAsync(Shipment, NewShipment()), HttpStatusCode.Forbidden);
+        // Assert
+        await ReadProblem(create, HttpStatusCode.Forbidden);
+        await ReadProblem(edit, HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -128,9 +151,11 @@ public sealed class SecurityTests : IDisposable
         // Arrange
         var courier = _factory.CreateClient(ApiFactory.Token(ApexPostRoles.Courier));
 
-        // Act and assert
-        var problem = await ReadProblem(await courier.PostAsJsonAsync($"{Shipment}/scans", ScanBatch("CR-2002")), HttpStatusCode.Forbidden);
+        // Act
+        var response = await courier.PostAsJsonAsync($"{Shipment}/scans", ScanBatch("CR-2002"));
 
+        // Assert
+        var problem = await ReadProblem(response, HttpStatusCode.Forbidden);
         Assert.Contains("CR-2002", problem.GetProperty("detail").GetString());
         Assert.Empty(_factory.Store.AllScans);
     }
@@ -141,8 +166,11 @@ public sealed class SecurityTests : IDisposable
         // Arrange
         var noClaim = _factory.CreateClient(ApiFactory.Token([ApexPostRoles.Courier], courierId: null));
 
-        // Act and assert
-        await ReadProblem(await noClaim.PostAsJsonAsync($"{Shipment}/scans", ScanBatch(Make.CourierId)), HttpStatusCode.Forbidden);
+        // Act
+        var response = await noClaim.PostAsJsonAsync($"{Shipment}/scans", ScanBatch(Make.CourierId));
+
+        // Assert
+        await ReadProblem(response, HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -151,27 +179,22 @@ public sealed class SecurityTests : IDisposable
         // Arrange
         const string route = "/api/v2/partner/shipments/APX-10000001";
         var anonymous = _factory.CreateAnonymousClient();
-
-        var missing = await anonymous.GetAsync(route);
+        var bearer = _factory.CreateClient();
         var wrongKey = new HttpRequestMessage(HttpMethod.Get, route) { Headers = { { "X-Api-Key", "wrong-key-0123456789abcdef0123456789" } } };
         var rightKey = new HttpRequestMessage(HttpMethod.Get, route) { Headers = { { "X-Api-Key", ApiFactory.PartnerKey } } };
 
         // Act
-        var bearerOnly = await _factory.CreateClient().GetAsync(route);
-
-        // Assert
-        await ReadProblem(missing, HttpStatusCode.Unauthorized);
-        await ReadProblem(await anonymous.SendAsync(wrongKey), HttpStatusCode.Unauthorized);
-        await ReadProblem(bearerOnly, HttpStatusCode.Unauthorized);
-
-        // Act
+        var missing = await anonymous.GetAsync(route);
+        var wrong = await anonymous.SendAsync(wrongKey);
+        var bearerOnly = await bearer.GetAsync(route);
         var ok = await anonymous.SendAsync(rightKey);
 
         // Assert
+        await ReadProblem(missing, HttpStatusCode.Unauthorized);
+        await ReadProblem(wrong, HttpStatusCode.Unauthorized);
+        await ReadProblem(bearerOnly, HttpStatusCode.Unauthorized);
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-
         var body = await ok.Content.ReadFromJsonAsync<JsonElement>();
-
         Assert.Equal("Created", body.GetProperty("status").GetString());
         Assert.Equal("Sydney", body.GetProperty("destinationCity").GetString());
         Assert.DoesNotContain("5550", body.GetRawText());
@@ -186,10 +209,13 @@ public sealed class SecurityTests : IDisposable
         var v1 = new HttpRequestMessage(HttpMethod.Get, "/api/v1/partner/shipments/APX-10000001") { Headers = { { "X-Api-Key", ApiFactory.PartnerKey } } };
         var client = _factory.CreateAnonymousClient();
 
-        // Act and assert
-        await ReadProblem(await client.SendAsync(unknown), HttpStatusCode.NotFound);
+        // Act
+        var unknownResponse = await client.SendAsync(unknown);
+        var v1Response = await client.SendAsync(v1);
 
-        Assert.NotEqual(HttpStatusCode.OK, (await client.SendAsync(v1)).StatusCode);
+        // Assert
+        await ReadProblem(unknownResponse, HttpStatusCode.NotFound);
+        Assert.NotEqual(HttpStatusCode.OK, v1Response.StatusCode);
     }
 
     [Fact]
@@ -200,8 +226,11 @@ public sealed class SecurityTests : IDisposable
         var client = factory.WithWebHostBuilder(builder => builder.UseSetting("PartnerApiKeys:Keys:Weak", "short")).CreateClient();
         var request = new HttpRequestMessage(HttpMethod.Get, "/api/v2/partner/shipments/APX-10000001") { Headers = { { "X-Api-Key", "short" } } };
 
-        // Act and assert
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(request)).StatusCode);
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -215,21 +244,18 @@ public sealed class SecurityTests : IDisposable
 
         // Act
         var issued = await anonymous.PostAsJsonAsync("/dev/token", new { roles = new[] { "Courier" }, courierId = "CR-1001" });
-
-        // Assert
         var token = (await issued.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString()!;
-
-        // Act
+        var readWithIssuedToken = await development.CreateClient(token).GetAsync(Shipment);
         var refused = await anonymous.PostAsJsonAsync("/dev/token", new { roles = new[] { "Courier" } });
+        var productionSignedIn = await production.CreateClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
+        var productionAnonymous = await production.CreateAnonymousClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, (await development.CreateClient(token).GetAsync(Shipment)).StatusCode);
-
+        Assert.Equal(HttpStatusCode.OK, readWithIssuedToken.StatusCode);
         await ReadProblem(refused, HttpStatusCode.BadRequest);
-
         // In Production the route does not exist: 404 to a signed-in caller, and 401 to an anonymous one, who learns nothing.
-        Assert.Equal(HttpStatusCode.NotFound, (await production.CreateClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } })).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await production.CreateAnonymousClient().PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, productionSignedIn.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, productionAnonymous.StatusCode);
     }
 
     [Theory]
@@ -279,11 +305,13 @@ public sealed class SecurityTests : IDisposable
 
         // Act
         var options = pattern.Options;
+        var longBadInputValid = attribute.IsValid(new string('1', 5000) + "x");
+        var normalInputValid = attribute.IsValid("+61 2 5550 1234");
 
         // Assert
         Assert.True(options.HasFlag(System.Text.RegularExpressions.RegexOptions.NonBacktracking));
-        Assert.False(attribute.IsValid(new string('1', 5000) + "x"));
-        Assert.True(attribute.IsValid("+61 2 5550 1234"));
+        Assert.False(longBadInputValid);
+        Assert.True(normalInputValid);
     }
 
     [Fact]
@@ -334,11 +362,12 @@ public sealed class SecurityTests : IDisposable
 
         // Act
         var response = await client.PostAsJsonAsync("/dev/token", new { roles = new[] { "Admin" } });
+        var noAddressIsLocal = ApexPost.Api.Security.DevelopmentTokens.IsLocalCaller(null);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.DoesNotContain("accessToken", await response.Content.ReadAsStringAsync());
-        Assert.False(ApexPost.Api.Security.DevelopmentTokens.IsLocalCaller(null));
+        Assert.False(noAddressIsLocal);
     }
 
     [Theory]
@@ -371,16 +400,14 @@ public sealed class SecurityTests : IDisposable
             message.Headers.Add("X-Api-Key", "wrong-key-0123456789abcdef0123456789");
             return client.SendAsync(message).GetAwaiter().GetResult();
         }
-
         var first = new[] { Request(), Request(), Request() };
 
+        // Act
         var fourth = Request();
 
-        // Act and assert
+        // Assert
         Assert.All(first, response => Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode));
-
         await ReadProblem(fourth, HttpStatusCode.TooManyRequests);
-
         Assert.True(fourth.Headers.Contains("Retry-After"));
     }
 
@@ -403,16 +430,17 @@ public sealed class SecurityTests : IDisposable
     }
 
     [Fact]
-    public async Task Startup_WeakSigningKey_RefusesToStart()
+    public void Startup_WeakSigningKey_RefusesToStart()
     {
         // Arrange
         using var factory = new ApiFactory();
         var weak = factory.WithWebHostBuilder(builder => builder.UseSetting("Jwt:SigningKey", Convert.ToBase64String(new byte[16])));
 
-        // Act and assert
-        var error = Assert.ThrowsAny<Exception>(() => weak.CreateClient());
+        // Act
+        var error = Record.Exception(() => weak.CreateClient());
 
+        // Assert
+        Assert.NotNull(error);
         Assert.Contains("Jwt:SigningKey", error.ToString());
-        await Task.CompletedTask;
     }
 }
