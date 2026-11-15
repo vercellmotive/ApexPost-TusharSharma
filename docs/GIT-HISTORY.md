@@ -153,7 +153,18 @@ A review of the merged branch against the brief found 181 test names that did no
 | Commit | Date | Message |
 |---|---|---|
 | `9cbcef7` | 2026-11-15 | test: give the remaining 181 tests three-part Method_Scenario_ExpectedResult names |
-| (this file) | 2026-11-15 | docs: link the TDD evidence and note the SpecFlow migration and the main branch |
+| `5fab7c5` | 2026-11-15 | docs: link the TDD evidence and note the SpecFlow migration and the main branch |
+
+Merged into `master` through [PR #28](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/28) as `e01b489`.
+
+### Week 5 AAA review (`week5-aaa`)
+
+A strict check of the Arrange-Act-Assert layout found 157 tests that did not keep it. They combined Act and Assert, acted twice, or called a response-checking helper before `// Assert`. Each test now has one Act and one Assert. No test was split or dropped, and the counts did not change. `tools/check-test-conventions.py` checks both rules for every test. As before, this branch adds new commits and rewrites none.
+
+| Commit | Date | Message |
+|---|---|---|
+| `e2d9863` | 2026-11-15 | test: give every test exactly one Act and one Assert section |
+| (this file) | 2026-11-15 | docs: record the AAA review and how the conventions are checked |
 
 ## Early commit messages
 

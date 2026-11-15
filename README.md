@@ -93,6 +93,12 @@ dotnet test ApexPost.Specs
 dotnet test ApexPost.slnx --filter "FullyQualifiedName~ShipmentService"
 ```
 
+To check that every test follows the naming and Arrange-Act-Assert rules in `TESTING-STRATEGY.md` section 7, run this. It needs only Python 3 and exits with 1 if any test breaks a rule:
+
+```bash
+python3 tools/check-test-conventions.py
+```
+
 The SQL Server tests are reported as skipped unless a server is configured. Point them at a server you control: each run creates and drops its own disposable database and never touches `ApexPostDb`:
 
 ```bash
@@ -450,7 +456,7 @@ The engineering lead asked for evidence that ApexPost is reliable and safe to ch
 - [`TESTING-STRATEGY.md`](TESTING-STRATEGY.md) was written first. It has the risk map, the test pyramid, the choice of xUnit, a review of every existing test class (kept, modified, removed or replaced, and why), the data access strategy, what is not tested, the results, a reflection and viva notes.
 - [`TDD-LOG.md`](TDD-LOG.md) records a new rule built test-first, in `RED:`, `GREEN:` and `REFACTOR:` commits: a scan recorded after its shipment was closed is rejected. The output of the test run at each step is in [`docs/week5/tdd/`](docs/week5/tdd/).
 - **Branch:** the work was done on `week5-testing`. It was merged into `master`, this repository's main branch, through [pull request #27](https://github.com/vercellmotive/ApexPost-TusharSharma/pull/27). The merge used a merge commit, not a squash, so `git log master` still shows `RED:` `2d72146`, `GREEN:` `24cbdb7` and `REFACTOR:` `b9aa7ba`.
-- **Test names:** every test follows `Method_Scenario_ExpectedResult`. The names that a second review found still had only two parts are listed in [`docs/week5/test-renames.md`](docs/week5/test-renames.md).
+- **Test names and layout:** every one of the 464 tests is named `Method_Scenario_ExpectedResult`, with one Act and one Assert section. [`tools/check-test-conventions.py`](tools/check-test-conventions.py) checks both rules: it reports 0 tests breaking them, against 179 before the review after the merge. [`docs/week5/test-renames.md`](docs/week5/test-renames.md) lists the names that review changed.
 - [`COPILOT-LOG.md`](COPILOT-LOG.md) records two GitHub Copilot drafts (outbox unit tests, the access-control feature), what was kept, changed or rejected, and three deliberate breaks of production code that the reviewed tests caught.
 - The new boundary tests found a real defect: tracking and phone numbers ending in a line break passed validation, because `$` in .NET also matches before a final line break. It is fixed, and the failing output is in [`docs/week5/trailing-newline-before-fix.txt`](docs/week5/trailing-newline-before-fix.txt).
 
