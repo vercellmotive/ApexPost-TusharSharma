@@ -2,11 +2,19 @@
 
 One new business rule was built test-first, in three commits labelled `RED:`, `GREEN:` and `REFACTOR:` on `week5-testing`. They keep those labels in `master` because the branch is merged with a merge commit, not squashed.
 
-| Step | Commit | Result of `dotnet test ApexPost.slnx` |
-|---|---|---|
-| RED | `2d72146` RED: a scan recorded after its shipment was closed must be rejected | 4 of the 7 new cases fail, everything else passes |
-| GREEN | `24cbdb7` GREEN: reject a scan recorded after its shipment was closed | Unit 298 passed, integration 315 passed and 36 skipped (SQL Server) |
-| REFACTOR | `b9aa7ba` REFACTOR: move the closed-shipment rule into the Shipment domain object | The same counts. No test was edited. |
+| Step | Commit | Result of `dotnet test ApexPost.slnx` | Saved output |
+|---|---|---|---|
+| RED | `2d72146` RED: a scan recorded after its shipment was closed must be rejected | 4 of the 7 new cases fail, everything else passes | [`docs/week5/tdd/1-red.txt`](docs/week5/tdd/1-red.txt): the run of `ClosedShipmentScanTests`, with the four failures and their messages |
+| GREEN | `24cbdb7` GREEN: reject a scan recorded after its shipment was closed | Unit 298 passed, integration 315 passed and 36 skipped (SQL Server) | [`docs/week5/tdd/2-green.txt`](docs/week5/tdd/2-green.txt) |
+| REFACTOR | `b9aa7ba` REFACTOR: move the closed-shipment rule into the Shipment domain object | The same counts. No test was edited. | [`docs/week5/tdd/3-refactor.txt`](docs/week5/tdd/3-refactor.txt) |
+
+To repeat the cycle, check out each commit and run the tests:
+
+```bash
+git checkout 2d72146 && dotnet test ApexPost.UnitTests --filter "FullyQualifiedName~ClosedShipmentScanTests"
+```
+
+At `2d72146` this fails with the four failures above. At `24cbdb7` and `b9aa7ba` it passes. `git show --stat 2d72146` shows that the RED commit adds only the test file, with no production code.
 
 ## The requirement
 
